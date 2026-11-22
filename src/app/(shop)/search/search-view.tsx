@@ -23,7 +23,7 @@ const SORTS = ["Relevance", "Best selling", "Price ↑", "Price ↓", "Air only"
 type SearchPage = { products: Product[]; nextCursor: string | null };
 
 const RECENT_SEARCHES_KEY = "fastchina:recent-searches";
-const DISCOVERY_REFRESH_MS = 6 * 60 * 60 * 1000;
+const DISCOVERY_REFRESH_MS = 5 * 60 * 1000;
 
 function shuffleForWindow<T>(items: T[], window: number): T[] {
   const result = [...items];
