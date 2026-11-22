@@ -5,37 +5,41 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef } from "react";
 import { imagesFor } from "@/lib/catalog/thumbs";
 import { RotatingPhoto } from "@/components/shop/rotating-photo";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ProductCard } from "@/components/shop/product-card";
 import { InfoButton } from "@/components/ui/info-button";
 import { ProductIcon } from "@/components/ui/product-icon";
 import { CATEGORIES } from "@/lib/catalog/categories";
 import type { Product } from "@/lib/catalog/types";
+import type { CategoryPhotoProduct } from "@/lib/data/catalog";
 import { cn } from "@/lib/format";
 
 const NOTE_TONE = { sea: "bg-[#EEF4FF] text-sea", retail: "bg-[#FBF6EA] text-gold-ink", plain: "bg-surface text-[#333]" } as const;
 
-export function CategoryBrowser({ products: all }: { products: Product[] }) {
-  const params = useSearchParams();
+export function CategoryBrowser({ products, photoProducts, selectedCategory }: {
+  products: Product[];
+  photoProducts: CategoryPhotoProduct[];
+  selectedCategory: string;
+}) {
   const router = useRouter();
-  const slug = params.get("c") ?? "for-you";
+  const slug = selectedCategory;
   const panel = useRef<HTMLDivElement>(null);
   // A new category starts at the top of its panel.
   useEffect(() => {
     panel.current?.scrollTo({ top: 0 });
   }, [slug]);
   const cat = CATEGORIES.find((c) => c.slug === slug) ?? CATEGORIES[0];
-  const products = all.filter((p) =>
+  const tileCandidates = photoProducts.filter((p) =>
     cat.slug === "for-you" ? true : cat.slug === "women" ? inDepartment(p, "women") : cat.slug === "men" ? inDepartment(p, "men") : cat.slug === "retailer" ? p.wholesale : p.category === cat.slug,
   );
 
-  // Each tile shows real photos of products that match it (else the category's best sellers).
+  // Tile photos use lightweight catalogue rows; full SKU records are fetched only for the 10 cards.
   const tilePhotos = useMemo(
     () => cat.tiles.map((t) => {
-      const hit = imagesFor(products, { name: t.name }, 4);
-      return hit.length || cat.slug === "for-you" ? hit : imagesFor(products, {}, 4);
+      const hit = imagesFor(tileCandidates, { name: t.name }, 4);
+      return hit.length || cat.slug === "for-you" ? hit : imagesFor(tileCandidates, {}, 4);
     }),
-    [cat, products],
+    [cat, tileCandidates],
   );
 
   return (
