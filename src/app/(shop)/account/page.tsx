@@ -97,7 +97,6 @@ async function Profile() {
   const [me, site] = await Promise.all([getMe(), getSiteData()]);
   if (!me) return null;
 
-  const initial = me.name.trim()[0]?.toUpperCase() ?? "F";
   const staff = me.role !== "customer" && me.role !== "seller";
   const latest = me.orders.find((o) => !["delivered", "cancelled", "refunded"].includes(o.status));
 
