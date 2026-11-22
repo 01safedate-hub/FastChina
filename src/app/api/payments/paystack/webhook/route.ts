@@ -3,7 +3,6 @@ import { verifyPaystackWebhook } from "@/lib/payments/gateways";
 import { fulfilVerifiedPayment } from "@/lib/payments/fulfil";
 import { secretDb } from "@/lib/supabase/server";
 
-export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const raw = await request.text();
