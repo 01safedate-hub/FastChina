@@ -9,10 +9,35 @@ import { ProductIcon } from "@/components/ui/product-icon";
 import type { Product } from "@/lib/catalog/types";
 import { cn } from "@/lib/format";
 
-const DISCOVER = ["Necklace for men", "Watch for men", "Bone straight wig", "Android phone", "Chain", "Office chair", "Party dress", "Lipstick", "Sneakers"];
+const DISCOVER = [
+  "Necklace for men", "Watch for men", "Bone straight wig", "Android phone", "Chain",
+  "Office chair", "Party dress", "Lipstick", "Sneakers", "Wireless earbuds",
+  "Smart watches", "Phone cases", "Men's sneakers", "Women's handbags", "Sunglasses",
+  "Home decorations", "Kitchen appliances", "Gaming accessories", "Laptop bags",
+  "Bracelets", "Perfumes", "Wigs and extensions", "Travel backpacks", "Bluetooth speakers",
+  "Baby clothes", "Fitness equipment", "Car accessories", "Storage organisers",
+  "Men's shirts", "Women's tops", "LED lights", "Power banks", "Water bottles",
+];
 const SORTS = ["Relevance", "Best selling", "Price ↑", "Price ↓", "Air only"] as const;
 
 type SearchPage = { products: Product[]; nextCursor: string | null };
+
+const RECENT_SEARCHES_KEY = "fastchina:recent-searches";
+const DISCOVERY_REFRESH_MS = 6 * 60 * 60 * 1000;
+
+function shuffleForWindow<T>(items: T[], window: number): T[] {
+  const result = [...items];
+  let seed = (window ^ 0x9e3779b9) >>> 0;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 function HotListImage({ product }: { product: Product }) {
   const [failed, setFailed] = useState(false);
@@ -46,7 +71,8 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
   const params = useSearchParams();
   const router = useRouter();
   const [q, setQ] = useState(params.get("q") ?? "");
-  const [recent, setRecent] = useState(["Silver necklace", "Lace wig", "Earbuds", "Phone case"]);
+  const [recent, setRecent] = useState<string[]>([]);
+  const [discoveryWindow, setDiscoveryWindow] = useState(0);
   const [sort, setSort] = useState<(typeof SORTS)[number]>("Relevance");
   const [products, setProducts] = useState<Product[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -57,6 +83,29 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
   const activeRequest = useRef<AbortController | null>(null);
   const loadingRef = useRef(false);
   const term = q.trim();
+
+  const discoveryItems = shuffleForWindow(DISCOVER, discoveryWindow);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(RECENT_SEARCHES_KEY);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setRecent(parsed.filter((item): item is string => typeof item === "string").slice(0, 8));
+        }
+      }
+    } catch {
+      // Search still works when browser storage is unavailable.
+    }
+  }, []);
+
+  useEffect(() => {
+    const updateWindow = () => setDiscoveryWindow(Math.floor(Date.now() / DISCOVERY_REFRESH_MS));
+    updateWindow();
+    const interval = window.setInterval(updateWindow, 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const loadPage = useCallback(async (searchTerm: string, cursor: string | null, reset = false) => {
     if (loadingRef.current) return;
@@ -136,8 +185,20 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
 
   const results = sortResults(products, sort);
   const go = (value: string) => {
-    setQ(value);
-    router.replace(value ? `/search?q=${encodeURIComponent(value)}` : "/search", { scroll: false });
+    const cleaned = value.trim().slice(0, 120);
+    setQ(cleaned);
+    if (cleaned.length >= 2) {
+      setRecent((current) => {
+        const next = [cleaned, ...current.filter((item) => item.toLowerCase() !== cleaned.toLowerCase())].slice(0, 8);
+        try {
+          window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
+        } catch {
+          // Keep the in-memory recent list even if storage is unavailable.
+        }
+        return next;
+      });
+    }
+    router.replace(cleaned ? `/search?q=${encodeURIComponent(cleaned)}` : "/search", { scroll: false });
   };
 
   return (
@@ -168,14 +229,14 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
               <section className="flex flex-col gap-2.5">
                 <div className="flex items-center justify-between">
                   <h2 className="text-base font-extrabold">Recent searches</h2>
-                  <button type="button" aria-label="Clear recent searches" onClick={() => setRecent([])} className="flex size-10 items-center justify-center text-muted"><Trash2 aria-hidden size={18} /></button>
+                  <button type="button" aria-label="Clear recent searches" onClick={() => { setRecent([]); try { window.localStorage.removeItem(RECENT_SEARCHES_KEY); } catch { /* Ignore unavailable storage. */ } }} className="flex size-10 items-center justify-center text-muted"><Trash2 aria-hidden size={18} /></button>
                 </div>
                 <div className="flex flex-wrap gap-2">{recent.map((item) => <button key={item} type="button" onClick={() => go(item)} className="min-h-[38px] rounded-full border border-black/15 bg-white px-3.5 text-sm text-[#333] transition-colors hover:border-ink hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">{item}</button>)}</div>
               </section>
             )}
             <section className="flex flex-col gap-2.5">
               <h2 className="text-base font-extrabold">Search discovery</h2>
-              <div className="flex flex-wrap gap-2">{DISCOVER.map((item) => <button key={item} type="button" onClick={() => go(item)} className="min-h-[38px] rounded-full border border-black/15 bg-white px-3.5 text-sm text-[#333] transition-colors hover:border-ink hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">{item}</button>)}</div>
+              <div className="flex flex-wrap gap-2">{discoveryItems.map((item) => <button key={item} type="button" onClick={() => go(item)} className="min-h-[38px] rounded-full border border-black/15 bg-white px-3.5 text-sm text-[#333] transition-colors hover:border-ink hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">{item}</button>)}</div>
             </section>
           </div>
           <section className="flex flex-col gap-2.5">
