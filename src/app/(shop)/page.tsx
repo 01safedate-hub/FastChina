@@ -32,26 +32,40 @@ const BUBBLES = [
 ] as const;
 
 export default async function HomePage() {
-  // Reuse the first feed page for homepage merchandising instead of issuing a second
-  // full catalogue/SKU query during prerender (which can exceed the database timeout).
-  const feed = await getProductFeedPage();
-  const products = feed.products;
-  const byLowestPrice = [...products].sort((a, b) => a.prices.list - b.prices.list || a.name.localeCompare(b.name));
-  const underFiveK = byLowestPrice.filter((product) => product.prices.list < 5_000).slice(0, 12);
-  const fiveToTenK = byLowestPrice.filter((product) => product.prices.list >= 5_000 && product.prices.list < 10_000).slice(0, 12);
-  const bySales = [...products].sort((a, b) => b.sold - a.sold);
-  const byNewest = [...products].filter((p) => p.isNew || p.addedAt).sort((a, b) => Number(!!b.isNew) - Number(!!a.isNew) || (b.addedAt ?? 0) - (a.addedAt ?? 0));
-  const inCategories = (keys: string[]) => products.filter((p) => keys.includes(String(p.category)));
+  // Reserve distinct catalogue pages for the nine curated collections. Each query
+  // stays small to avoid the Supabase statement timeout seen with large joined reads.
+  const firstPage = await getProductFeedPage();
+  const collectionPool: typeof firstPage.products = [];
+  let nextCursor = firstPage.nextCursor;
+  for (let pageNumber = 0; pageNumber < 9 && nextCursor; pageNumber++) {
+    const page = await getProductFeedPage(nextCursor);
+    collectionPool.push(...page.products);
+    nextCursor = page.nextCursor;
+  }
+
+  const feed = { products: firstPage.products, nextCursor };
+  const products = [...firstPage.products, ...collectionPool];
+  const unused = new Set(collectionPool.map((product) => product.slug));
+  const takeUnique = (candidates: typeof products) => {
+    const selected = candidates.filter((product) => unused.has(product.slug)).slice(0, 12);
+    selected.forEach((product) => unused.delete(product.slug));
+    return selected;
+  };
+  const byLowestPrice = [...collectionPool].sort((a, b) => a.prices.list - b.prices.list || a.name.localeCompare(b.name));
+  const bySales = [...collectionPool].sort((a, b) => b.sold - a.sold);
+  const byNewest = [...collectionPool].filter((p) => p.isNew || p.addedAt)
+    .sort((a, b) => Number(!!b.isNew) - Number(!!a.isNew) || (b.addedAt ?? 0) - (a.addedAt ?? 0));
+  const inCategories = (keys: string[]) => collectionPool.filter((p) => keys.includes(String(p.category)));
   const feedCollections = [
-    { title: "Trending Now", products: bySales.slice(0, 12) },
-    { title: "Budget Finds", products: byLowestPrice.slice(0, 12) },
-    { title: "Just Arrived", products: byNewest.slice(0, 12) },
-    { title: "Fashion Picks", products: inCategories(["fashion", "hair", "shoes", "bags", "jewellery", "beauty"]).slice(0, 12) },
-    { title: "Under ₦10,000", products: fiveToTenK },
-    { title: "Home & Living", products: inCategories(["home", "furniture", "machines", "kitchen"]).slice(0, 12) },
-    { title: "Wholesale Deals", products: products.filter((p) => p.wholesale && p.wholesaleFrom > 0).slice(0, 12) },
-    { title: "Best Sellers", products: bySales.slice(0, 12) },
-    { title: "Under ₦5,000", products: underFiveK },
+    { title: "Trending Now", products: takeUnique(bySales) },
+    { title: "Budget Finds", products: takeUnique(byLowestPrice) },
+    { title: "Under ₦5,000", products: takeUnique(byLowestPrice.filter((p) => p.prices.list < 5_000)) },
+    { title: "Just Arrived", products: takeUnique(byNewest) },
+    { title: "Fashion Picks", products: takeUnique(inCategories(["fashion", "hair", "shoes", "bags", "jewellery", "beauty"])) },
+    { title: "Under ₦10,000", products: takeUnique(byLowestPrice.filter((p) => p.prices.list >= 5_000 && p.prices.list < 10_000)) },
+    { title: "Home & Living", products: takeUnique(inCategories(["home", "furniture", "machines", "kitchen"])) },
+    { title: "Wholesale Deals", products: takeUnique(collectionPool.filter((p) => p.wholesale && p.wholesaleFrom > 0)) },
+    { title: "Best Sellers", products: takeUnique(bySales) },
   ];
   const photos = imageMap(products, BUBBLE_PHOTOS);
   const heroPhotos = imageMap(products, {
