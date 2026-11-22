@@ -23,6 +23,7 @@ import { type CheckoutQuote, placeOrder, quoteCheckout } from "../actions";
 import { addDaysLabel } from "@/lib/time";
 import { useOnline } from "@/hooks/use-online";
 import { attempt } from "@/lib/net";
+import { startOrderPayment } from "../payment-actions";
 
 type Mode = "full" | "small" | "group";
 
@@ -70,7 +71,8 @@ export function CheckoutView() {
     }).catch(() => null);
     return () => { live = false; };
   }, [LISTED]);
-  const [method, setMethod] = useState("Card");
+  const [method, setMethod] = useState<"paystack" | "flutterwave">("paystack");
+  const [email, setEmail] = useState("");
   // Pay small small: the first payment the customer chose (₦).
   const [plan, setPlan] = useState(0);
   const [usePoints, setUsePoints] = useState(false);
@@ -246,10 +248,14 @@ export function CheckoutView() {
 
           {mode === "full" && (
             <div className="flex flex-col gap-1.5" role="radiogroup" aria-label="Payment method">
-              {["Card (Visa, Mastercard, Verve)", "Bank transfer", "USSD", "FastChina wallet · ₦0"].map((m) => (
-                <button key={m} type="button" role="radio" aria-checked={method === m} onClick={() => setMethod(m)} className={radio(method === m)}>
-                  <span className={dot(method === m)} />
-                  {m}
+              <label className="flex flex-col gap-1 text-xs font-bold">
+                Email for payment receipt
+                <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="min-h-11 border border-black/15 px-2 text-sm font-normal" />
+              </label>
+              {([["paystack", "Paystack"], ["flutterwave", "Flutterwave"]] as const).map(([id, label]) => (
+                <button key={id} type="button" role="radio" aria-checked={method === id} onClick={() => setMethod(id)} className={radio(method === id)}>
+                  <span className={dot(method === id)} />
+                  {label}
                 </button>
               ))}
             </div>
@@ -373,11 +379,12 @@ export function CheckoutView() {
         <div className="flex justify-between border-t border-line pt-1.5 text-base"><strong>Total</strong><strong>{naira(due)}</strong></div>
         <div className="fixed inset-x-0 bottom-0 z-30 flex flex-col gap-1 border-t border-line bg-white px-3 pt-2 pb-[max(14px,env(safe-area-inset-bottom))] md:static md:border-0 md:p-0 md:pt-2">
           {placeMsg && <p role="alert" className="text-center text-xs font-semibold text-sale">{placeMsg}</p>}
+          {!placeMsg && mode === "group" && <p role="status" className="text-center text-xs font-semibold text-muted">Group payments are not connected to real payment processing yet. Choose Pay in full or Small small for now.</p>}
           {!placeMsg && !online && <p role="status" className="text-center text-xs font-semibold text-muted">You’re offline. We’ll confirm your total when you reconnect.</p>}
           {!placeMsg && online && quoteFailed && <p role="status" className="text-center text-xs font-semibold text-muted">Showing an estimate. We couldn’t confirm the final total yet; it updates when your connection settles.</p>}
           <button
             type="button"
-            disabled={placing || selected.length === 0 || !online || !serverQuote}
+            disabled={placing || selected.length === 0 || !online || !serverQuote || mode === "group" || (mode === "full" && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.trim()))}
             onClick={() =>
               startPlacing(async () => {
                 setPlaceMsg(null);
