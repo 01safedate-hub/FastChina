@@ -1,5 +1,7 @@
 import type { Product } from "./types";
 
+export type ImageCandidate = Pick<Product, "name" | "category" | "images" | "sold"> & Partial<Pick<Product, "wholesale">>;
+
 const STOP = new Set(["and", "for", "the", "with", "men", "women", "kids", "all"]);
 
 /** "Lace front wigs" -> ["lace", "front", "wig"]: the words a product name should contain. */
@@ -16,7 +18,7 @@ export function keywords(name: string): string[] {
  * First photos of the best sellers that fit a tile: in the category (if given) and, if words are given,
  * naming all of them, else any of them, else just the category. Empty when nothing fits.
  */
-export function imagesFor(products: Product[], opts: { category?: string | string[]; name?: string; wholesale?: boolean }, n = 4): string[] {
+export function imagesFor(products: ImageCandidate[], opts: { category?: string | string[]; name?: string; wholesale?: boolean }, n = 4): string[] {
   const cats = opts.category === undefined ? null : new Set([opts.category].flat());
   const pool = products
     .filter((p) => p.images[0] && (!cats || cats.has(p.category)) && (!opts.wholesale || p.wholesale))
@@ -31,6 +33,6 @@ export function imagesFor(products: Product[], opts: { category?: string | strin
 }
 
 /** One set of photos per key, for passing to client components. */
-export function imageMap<K extends string>(products: Product[], specs: Record<K, Parameters<typeof imagesFor>[1]>, n = 4): Record<K, string[]> {
+export function imageMap<K extends string>(products: ImageCandidate[], specs: Record<K, Parameters<typeof imagesFor>[1]>, n = 4): Record<K, string[]> {
   return Object.fromEntries(Object.entries(specs).map(([k, s]) => [k, imagesFor(products, s as Parameters<typeof imagesFor>[1], n)])) as Record<K, string[]>;
 }
