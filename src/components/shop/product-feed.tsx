@@ -62,25 +62,24 @@ function PriceCarousel({ title, products }: { title: string; products: Product[]
 export function ProductFeed({
   products: initialProducts,
   nextCursor: initialCursor,
-  underFiveK,
-  fiveToTenK,
+  collections,
 }: {
   products: Product[];
   nextCursor: string | null;
-  underFiveK: Product[];
-  fiveToTenK: Product[];
+  collections: { title: string; products: Product[] }[];
 }) {
   const [tab, setTab] = useState<Tab>("For You");
-  const [shuffledUnderFiveK, setShuffledUnderFiveK] = useState(underFiveK);
-  const [shuffledFiveToTenK, setShuffledFiveToTenK] = useState(fiveToTenK);
+  const [shuffledCollections, setShuffledCollections] = useState(collections);
   const [products, setProducts] = useState(initialProducts);
   const [cursor, setCursor] = useState(initialCursor);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    setShuffledUnderFiveK(shuffleProducts(underFiveK));
-    setShuffledFiveToTenK(shuffleProducts(fiveToTenK));
-  }, [underFiveK, fiveToTenK]);
+    setShuffledCollections(collections.map((collection) => ({
+      ...collection,
+      products: collection.title.startsWith("Under ₦") ? shuffleProducts(collection.products) : collection.products,
+    })));
+  }, [collections]);
 
   const end = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
@@ -132,9 +131,7 @@ export function ProductFeed({
 
   return (
     <section aria-label="Products" className="flex flex-col gap-4">
-      <PriceCarousel title="Under ₦5,000" products={shuffledUnderFiveK} />
-      <PriceCarousel title="Under ₦10,000" products={shuffledFiveToTenK} />
-      <div className="flex flex-col gap-2">
+       <div className="flex flex-col gap-2">
         <div className="no-scrollbar sticky top-[69px] z-10 flex items-center gap-0.5 overflow-x-auto bg-white px-2 md:static md:px-0">
           {TABS.map((t) => (
             <button
@@ -160,7 +157,15 @@ export function ProductFeed({
               return (
                 <Fragment key={p.slug}>
                   <ProductCard product={p} />
-                  {n % 12 === 5 && <PromoTile slot={Math.floor(n / 12)} images={photos} />}\n                  {tab === "For You" && n % 12 === 0 && collections[(n / 12 - 1) % collections.length] && (\n                    <div className="col-span-2 min-w-0 py-2 md:col-span-full">\n                      <PriceCarousel title={collections[(n / 12 - 1) % collections.length].title} products={collections[(n / 12 - 1) % collections.length].products} />\n                    </div>\n                  )}
+                  {n % 12 === 5 && <PromoTile slot={Math.floor(n / 12)} images={photos} />}
+                  {tab === "For You" && n % 12 === 0 && shuffledCollections.length > 0 && (
+                    <div className="col-span-2 min-w-0 py-2 md:col-span-full">
+                      <PriceCarousel
+                        title={shuffledCollections[(n / 12 - 1) % shuffledCollections.length].title}
+                        products={shuffledCollections[(n / 12 - 1) % shuffledCollections.length].products}
+                      />
+                    </div>
+                  )}
                   {spotSlot && <SpotlightCarousel product={spot} rank={spot ? ranks.get(spot.slug) : undefined} className="col-span-2 aspect-[16/11] sm:aspect-[2/1]" images={photos} />}
                 </Fragment>
               );
