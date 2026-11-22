@@ -70,7 +70,11 @@ async function Profile() {
   return (
     <>
       <section className="flex items-center gap-3 bg-white px-4 py-4 md:rounded-2xl md:border md:border-line">
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-ink text-xl font-extrabold text-white">{initial}</span>
+        {me.avatarUrl ? (
+          <img src={me.avatarUrl} alt="" className="size-14 shrink-0 rounded-full object-cover" />
+        ) : (
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-ink text-xl font-extrabold text-white">{initial}</span>
+        )}
         <Link href="/account/settings/profile" className="flex min-w-0 flex-1 flex-col">
           <h1 className="truncate text-[18px] font-extrabold">{me.name}</h1>
           <span className="text-[13px] text-muted">My profile ›</span>
