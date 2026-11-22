@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { fulfilVerifiedPayment } from "@/lib/payments/fulfil";
 import { secretDb } from "@/lib/supabase/server";
 
-export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
