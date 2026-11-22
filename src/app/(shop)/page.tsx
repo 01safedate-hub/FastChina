@@ -10,7 +10,7 @@ import { Countdown } from "@/components/ui/countdown";
 import { InfoButton } from "@/components/ui/info-button";
 import { ProductIcon } from "@/components/ui/product-icon";
 import { JsonLd } from "@/components/seo/json-ld";
-import { getProducts } from "@/lib/data/catalog";
+import { getProductFeedPage, getProducts } from "@/lib/data/catalog";
 import { imageMap, imagesFor } from "@/lib/catalog/thumbs";
 import { RotatingPhoto } from "@/components/shop/rotating-photo";
 import { CATEGORY_PAGES } from "@/lib/content/category-pages";
@@ -32,7 +32,10 @@ const BUBBLES = [
 ] as const;
 
 export default async function HomePage() {
-  const products = await getProducts();
+  const [products, feed] = await Promise.all([getProducts(), getProductFeedPage()]);
+  const byLowestPrice = [...products].sort((a, b) => a.prices.list - b.prices.list || a.name.localeCompare(b.name));
+  const underFiveK = byLowestPrice.filter((product) => product.prices.list < 5_000).slice(0, 12);
+  const underTenK = byLowestPrice.filter((product) => product.prices.list < 10_000).slice(0, 12);
   const photos = imageMap(products, BUBBLE_PHOTOS);
   const heroPhotos = imageMap(products, {
     gadgets: { category: ["gadgets", "audio"] }, women: { category: ["fashion", "bags", "beauty"], name: "women" },
@@ -112,7 +115,7 @@ export default async function HomePage() {
         <RetailerTile />
       </div>
 
-      <ProductFeed products={products} />
+      <ProductFeed products={feed.products} nextCursor={feed.nextCursor} underFiveK={underFiveK} underTenK={underTenK} />
 
       <div className="px-3 md:px-0">
         <TrustGrid />
