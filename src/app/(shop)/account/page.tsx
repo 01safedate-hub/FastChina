@@ -260,7 +260,7 @@ function PicksFallback() {
     <section aria-labelledby="picks-h" className="flex min-h-[420px] flex-col gap-2 px-2 pt-2 md:px-0 lg:pt-0">
       <h2 id="picks-h" className="text-[15px] font-extrabold">Picked for you</h2>
       <div className="grid grid-cols-2 gap-x-1.5 gap-y-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 8 }, (_, index) => (
+        {Array.from({ length: 12 }, (_, index) => (
           <div key={index} className="flex min-w-0 flex-col gap-2">
             <div className="aspect-square w-full animate-pulse rounded-sm bg-[#EDEDED]" />
             <div className="h-4 w-full animate-pulse rounded bg-[#EDEDED]" />
