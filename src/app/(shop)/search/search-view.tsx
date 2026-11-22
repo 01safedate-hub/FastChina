@@ -35,18 +35,29 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
-  const requestId = useRef(0);\n  const activeRequest = useRef<AbortController | null>(null);
+  const requestId = useRef(0);
+  const activeRequest = useRef<AbortController | null>(null);
+  const loadingRef = useRef(false);
   const term = q.trim();
 
   const loadPage = useCallback(async (searchTerm: string, cursor: string | null, reset = false) => {
-    if (loading) return;
+    if (loadingRef.current) return;
+    if (reset) activeRequest.current?.abort();
+
+    const controller = new AbortController();
     const id = ++requestId.current;
+    activeRequest.current = controller;
+    loadingRef.current = true;
     setLoading(true);
     setError(false);
+
     try {
       const params = new URLSearchParams({ q: searchTerm });
       if (cursor) params.set("cursor", cursor);
-      const response = await fetch(`/api/catalog/search?${params.toString()}`, { cache: "no-store", signal: controller.signal });
+      const response = await fetch(`/api/catalog/search?${params.toString()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       if (!response.ok) throw new Error("Search request failed");
       const page = (await response.json()) as SearchPage;
       if (id !== requestId.current) return;
@@ -57,28 +68,42 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
       });
       setNextCursor(page.nextCursor);
     } catch {
-      if (id === requestId.current) setError(true);
+      if (!controller.signal.aborted && id === requestId.current) setError(true);
     } finally {
-      if (id === requestId.current) setLoading(false);
+      if (id === requestId.current) {
+        activeRequest.current = null;
+        loadingRef.current = false;
+        setLoading(false);
+      }
     }
-  }, [loading]);
+  }, []);
 
   useEffect(() => {
     const currentTerm = term;
+    activeRequest.current?.abort();
+    requestId.current += 1;
+    loadingRef.current = false;
+    setLoading(false);
+
     if (currentTerm.length < 2) {
-      requestId.current += 1;
       setProducts([]);
       setNextCursor(null);
-      setLoading(false);
       setError(false);
       return;
     }
+
+    setProducts([]);
+    setNextCursor(null);
     const timer = setTimeout(() => {
-      setProducts([]);
-      setNextCursor(null);
       void loadPage(currentTerm, null, true);
     }, 220);
-    return () => clearTimeout(timer);
+
+    return () => {
+      clearTimeout(timer);
+      activeRequest.current?.abort();
+      requestId.current += 1;
+      loadingRef.current = false;
+    };
   }, [term, loadPage]);
 
   useEffect(() => {
