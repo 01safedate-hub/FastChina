@@ -4,7 +4,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { EndlessFeed } from "@/components/shop/endless-feed";
 import { ReviewsSection } from "@/components/shop/reviews-section";
 import { CATEGORY_PAGES } from "@/lib/content/category-pages";
-import { getProduct, getProducts, getProductSlugs, getQuestions, getReviews } from "@/lib/data/catalog";
+import { getProduct, getRelatedProducts, getProductSlugs, getQuestions, getReviews } from "@/lib/data/catalog";
 import { naira } from "@/lib/format";
 import { breadcrumbs, graph, returnPolicy, SHOP_URL, shippingDetails, snippet } from "@/lib/seo";
 import { ProductView } from "./product-view";
@@ -38,7 +38,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   if (!product) notFound();
   const [qa, reviews] = await Promise.all([getQuestions(slug), getReviews(slug)]);
   // Related first, then everything else by popularity: the page keeps showing products as you scroll.
-  const all = (await getProducts()).filter((p) => p.slug !== slug);
+  const all = await getRelatedProducts(slug);
   const near = all.filter((p) => p.category === product.category);
   const related = [...near, ...all.filter((p) => p.category !== product.category).sort((a, b) => b.sold - a.sold)].slice(0, 120);
 
