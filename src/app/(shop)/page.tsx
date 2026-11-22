@@ -37,7 +37,7 @@ export default async function HomePage() {
   const firstPage = await getProductFeedPage();
   const collectionPool: typeof firstPage.products = [];
   let nextCursor = firstPage.nextCursor;
-  for (let pageNumber = 0; pageNumber < 9 && nextCursor; pageNumber++) {
+  for (let pageNumber = 0; pageNumber < 2 && nextCursor; pageNumber++) {
     const page = await getProductFeedPage(nextCursor);
     collectionPool.push(...page.products);
     nextCursor = page.nextCursor;
