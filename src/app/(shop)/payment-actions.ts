@@ -5,7 +5,7 @@ import { allow, TOO_MANY } from "@/lib/rate-limit";
 import { getSessionUser } from "@/lib/supabase/auth";
 import { hasSupabase } from "@/lib/supabase/env";
 import { secretDb } from "@/lib/supabase/server";
-import { startHostedPayment, type PaymentProvider } from "@/lib/payments/gateways";
+import { startHostedPayment } from "@/lib/payments/gateways";
 
 export async function startOrderPayment(input: {
   code: unknown;
