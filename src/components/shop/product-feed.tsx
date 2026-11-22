@@ -117,7 +117,7 @@ export function ProductFeed({
   return (
     <section aria-label="Products" className="flex flex-col gap-4">
       <PriceCarousel title="Under ₦5,000" products={underFiveK} />
-      <PriceCarousel title="₦5,000–₦10,000" products={fiveToTenK} />
+      <PriceCarousel title="Under ₦10,000" products={fiveToTenK} />
       <div className="flex flex-col gap-2">
         <div className="no-scrollbar sticky top-[69px] z-10 flex items-center gap-0.5 overflow-x-auto bg-white px-2 md:static md:px-0">
           {TABS.map((t) => (
