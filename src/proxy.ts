@@ -48,7 +48,7 @@ export async function proxy(request: NextRequest) {
   // Cache Components streams dynamic product routes. A notFound() thrown after
   // streaming starts can render the not-found UI with HTTP 200, so validate
   // product slugs here before the route begins rendering.
-  const productMatch = /^\\/product\\/([^/]+)\\/?$/.exec(pathname);
+  const productMatch = /^\/product\/([^/]+)\/?$/.exec(pathname);
   const isMarketplaceHost = MAIN_HOSTS.includes(host) || isInfraHost(host);
   if (productMatch && isMarketplaceHost) {
     const slug = productMatch[1];
