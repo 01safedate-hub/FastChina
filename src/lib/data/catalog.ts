@@ -109,6 +109,41 @@ export async function getProducts(): Promise<Product[]> {
   return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
 }
 
+/** A bounded product set for homepage merchandising modules. */
+export async function getHomeProducts(): Promise<Product[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("catalog");
+  if (!hasSupabase) return SAMPLE_PRODUCTS.map(sampleToProduct);
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(120);
+  if (error) throw new Error(`Homepage catalogue: ${error.message}`);
+  return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
+}
+
+/** Bounded related-product candidates; the page prioritises the current product's category. */
+export async function getRelatedProducts(slug: string): Promise<Product[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("catalog");
+  if (!hasSupabase) return SAMPLE_PRODUCTS.map(sampleToProduct).filter((p) => p.slug !== slug);
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .neq("slug", slug)
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(120);
+  if (error) throw new Error(`Related catalogue: ${error.message}`);
+  return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
+}
+
 export interface ProductFeedPage {
   products: Product[];
   nextCursor: string | null;
