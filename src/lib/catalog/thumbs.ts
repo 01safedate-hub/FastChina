@@ -24,7 +24,7 @@ export function imagesFor(products: ImageCandidate[], opts: { category?: string 
     .filter((p) => p.images[0] && (!cats || cats.has(p.category)) && (!opts.wholesale || p.wholesale))
     .sort((a, b) => b.sold - a.sold);
   const words = opts.name ? keywords(opts.name) : [];
-  const has = (p: Product, w: string) => p.name.toLowerCase().includes(w);
+  const has = (p: ImageCandidate, w: string) => p.name.toLowerCase().includes(w);
   const tiers = words.length
     ? [pool.filter((p) => words.every((w) => has(p, w))), pool.filter((p) => words.some((w) => has(p, w))), cats ? pool : []]
     : [pool];
