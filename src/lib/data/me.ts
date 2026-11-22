@@ -27,6 +27,7 @@ export interface Me {
   email: string | null;
   name: string;
   phone: string | null;
+  avatarUrl: string | null;
   role: string;
   station: { id: string; name: string; area: string; state: string; verified: boolean } | null;
   wallet: number;
@@ -48,6 +49,11 @@ export async function getMe(): Promise<Me | null> {
     db.from("wishlists").select("product_id", { count: "exact", head: true }),
     db.from("orders").select("code, status, pay_mode, total_ngn, paid_ngn, created_at, order_items(id, title, variant_label, qty, product_skus(products(slug, customisable, custom_moq)), order_customisations(id, status, quote_ngn, staff_note, files))").order("created_at", { ascending: false }).limit(50),
   ]);
+  let avatarUrl: string | null = null;
+  const avatarPath = user.user_metadata.avatar_path;
+  if (typeof avatarPath === "string" && avatarPath.startsWith(`${user.id}/avatar.`)) {
+    avatarUrl = db.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl;
+  }
   const p = profile.data;
   let station: Me["station"] = null;
   if (p?.station_id) {
@@ -73,6 +79,7 @@ export async function getMe(): Promise<Me | null> {
     email: user.email,
     name: p?.full_name || user.email?.split("@")[0] || "FastChina customer",
     phone: p?.phone ?? user.phone,
+    avatarUrl,
     role: p?.role ?? "customer",
     station,
     wallet: bal.data?.wallet_ngn ?? 0,
