@@ -126,6 +126,31 @@ export async function getHomeProducts(): Promise<Product[]> {
   return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
 }
 
+/** Bounded wholesale catalogue: filter eligible products in the database before loading SKU details. */
+export async function getWholesaleProducts(): Promise<Product[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("catalog");
+  if (!hasSupabase) {
+    return SAMPLE_PRODUCTS.map(sampleToProduct).filter((p) => p.wholesale && p.wholesaleFrom > 0 && Number.isFinite(p.wholesaleFrom));
+  }
+  const wholesaleColumns = PRODUCT_COLUMNS.replace("product_skus(", "product_skus!inner(");
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(wholesaleColumns)
+    .eq("wholesale", true)
+    .eq("product_skus.active", true)
+    .gt("product_skus.price_wholesale", 0)
+    .in("status", ["active", "sold_out"])
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(120);
+  if (error) throw new Error(`Wholesale catalogue: ${error.message}`);
+  return ((data ?? []) as unknown as Row[])
+    .map(rowToProduct)
+    .filter((p): p is Product => p !== null && p.wholesale && p.wholesaleFrom > 0 && Number.isFinite(p.wholesaleFrom));
+}
+
 /** Bounded related-product candidates; the page prioritises the current product's category. */
 export async function getRelatedProducts(slug: string): Promise<Product[]> {
   "use cache";
