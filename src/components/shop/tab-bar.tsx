@@ -15,26 +15,15 @@ const TABS: { href: string; label: string; icon: LucideIcon; match: (p: string) 
   { href: "/account", label: "Me", icon: User, match: (p) => p.startsWith("/account") },
 ];
 
-/** Fixed mobile app navigation. Kept above page overlays and browser-safe-area insets. */
+/** Minimal bottom navigation on phones. Wholesale pages count the wholesale cart. */
 export function TabBar() {
-  const path = usePathname() ?? "/";
+  const path = usePathname();
   const { count } = useCart();
   const wholesale = useWholesaleCart().length;
-
-  // These pages provide their own sticky purchase/checkout controls.
-  if (
-    path.startsWith("/product/") ||
-    path.startsWith("/wholesale/p/") ||
-    path.startsWith("/checkout") ||
-    path.startsWith("/c/")
-  ) return null;
-
+  // Pages with their own sticky action bar hide the tabs, like native shopping apps.
+  if (path.startsWith("/product/") || path.startsWith("/wholesale/p/") || path.startsWith("/checkout") || path.startsWith("/c/")) return null;
   return (
-    <nav
-      aria-label="App navigation"
-      className="fixed inset-x-0 bottom-0 z-[2147483647] grid grid-cols-5 border-t border-[#e5e5e5] bg-white text-[#555] shadow-[0_-5px_20px_rgba(0,0,0,0.08)] md:hidden"
-      style={{ minHeight: "62px", paddingBottom: "max(6px, env(safe-area-inset-bottom))", paddingTop: "6px", pointerEvents: "auto" }}
-    >
+    <nav aria-label="App" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line/70 bg-white/95 pt-1 pb-[max(4px,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
       {TABS.map(({ href, label, icon: Icon, match }) => {
         const active = match(path);
         const badge = href === "/cart" ? count : href === "/wholesale" ? wholesale : 0;
@@ -43,21 +32,12 @@ export function TabBar() {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            aria-label={badge > 0 ? `${label}, ${badge} items` : label}
-            className={cn(
-              "relative flex min-h-[46px] flex-col items-center justify-center gap-1 px-1 text-[10px] leading-none no-underline outline-offset-[-2px]",
-              active ? "font-extrabold text-[#171717]" : "font-medium text-[#666]",
-            )}
+            aria-label={badge ? `${label}, ${badge} items` : undefined}
+            className={cn("relative flex h-10 flex-col items-center justify-center gap-px text-[10px] leading-none", active ? "font-bold text-ink" : "text-subtle")}
           >
-            <span className="relative flex h-6 w-7 items-center justify-center">
-              <Icon aria-hidden size={22} strokeWidth={active ? 2.4 : 1.8} className={cn(href === "/wholesale" && "text-[#c8102e]")} />
-              {badge > 0 && (
-                <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#c8102e] px-1 text-[9px] font-extrabold text-white">
-                  {badge}
-                </span>
-              )}
-            </span>
-            <span>{label}</span>
+            <Icon aria-hidden size={20} strokeWidth={active ? 2.2 : 1.6} className={cn(href === "/wholesale" && "text-sale")} />
+            {label}
+            {badge > 0 && <span className="absolute top-0 left-1/2 ml-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-sale px-1 text-[9px] font-extrabold text-white">{badge}</span>}
           </Link>
         );
       })}
