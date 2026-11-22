@@ -188,15 +188,13 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
     const cleaned = value.trim().slice(0, 120);
     setQ(cleaned);
     if (cleaned.length >= 2) {
-      setRecent((current) => {
-        const next = [cleaned, ...current.filter((item) => item.toLowerCase() !== cleaned.toLowerCase())].slice(0, 8);
-        try {
-          window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
-        } catch {
-          // Keep the in-memory recent list even if storage is unavailable.
-        }
-        return next;
-      });
+      const next = [cleaned, ...recent.filter((item) => item.toLowerCase() !== cleaned.toLowerCase())].slice(0, 8);
+      setRecent(next);
+      try {
+        window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
+      } catch {
+        // Keep the in-memory recent list even if storage is unavailable.
+      }
     }
     router.replace(cleaned ? `/search?q=${encodeURIComponent(cleaned)}` : "/search", { scroll: false });
   };
