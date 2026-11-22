@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSearchProductsPage } from "@/lib/data/catalog";\nimport { allow } from "@/lib/rate-limit";
+import { getSearchProductsPage } from "@/lib/data/catalog";
+import { allow } from "@/lib/rate-limit";
 
 const PAGE_SIZE = 24;
 
@@ -11,6 +12,10 @@ export async function GET(request: NextRequest) {
   }
   if (cursor !== null && !/^\d+$/.test(cursor)) {
     return NextResponse.json({ error: "Invalid search cursor" }, { status: 400 });
+  }
+
+  if (!(await allow("search", 120, 60))) {
+    return NextResponse.json({ error: "Too many searches. Please wait a moment." }, { status: 429 });
   }
 
   try {
