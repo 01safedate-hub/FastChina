@@ -1,13 +1,15 @@
 "use server";
 
 import { updateTag } from "next/cache";
+import { randomUUID } from "node:crypto";
 import { RESERVED, SLUG_RE } from "@/lib/dropship/plans";
 import { allow, TOO_MANY } from "@/lib/rate-limit";
 import { getSessionUser, userDb } from "@/lib/supabase/auth";
 import { hasSupabase } from "@/lib/supabase/env";
-import { publicDb } from "@/lib/supabase/server";
+import { publicDb, secretDb } from "@/lib/supabase/server";
+import { startHostedPayment, type PaymentProvider } from "@/lib/payments/gateways";
 
-type Result = { ok: boolean; message: string };
+type Result = { ok: boolean; message: string; checkoutUrl?: string };
 const DEMO: Result = { ok: true, message: "Demo mode: connect the database to save." };
 
 async function myStore() {
@@ -110,8 +112,44 @@ export async function removeListing(slug: unknown): Promise<Result> {
   return { ok: true, message: "Removed" };
 }
 
-/** Upgrades are paid by card/transfer; this opens with Flutterwave. Until then, staff can activate a plan. */
-export async function requestUpgrade(plan: unknown): Promise<Result> {
+/** Creates a provider-hosted monthly subscription checkout; the plan changes only after verified payment. */
+export async function requestUpgrade(plan: unknown, provider: unknown = "paystack"): Promise<Result> {
   if (plan !== "pro" && plan !== "elite") return { ok: false, message: "Choose Pro or Elite." };
-  return { ok: false, message: "Online upgrades open with payments very soon. To upgrade today, message help@fastchina.shop and we’ll switch you over." };
+  if (provider !== "paystack" && provider !== "flutterwave") return { ok: false, message: "Choose a payment provider." };
+  if (!hasSupabase) return { ok: false, message: "Payments are unavailable while the database is disconnected." };
+  const user = await getSessionUser();
+  if (!user?.email) return { ok: false, message: "Sign in with an account that has an email address before upgrading." };
+  const m = await myStore();
+  if (!m) return { ok: false, message: "Open a store first." };
+  if (m.store.plan === plan) return { ok: false, message: "Your store is already on this plan." };
+  if (!(await allow("seller-plan-payment", 3, 3600, user.id))) return { ok: false, message: TOO_MANY };
+
+  const amountNgn = plan === "pro" ? 15_000 : 45_000;
+  const reference = `FCS-${randomUUID().replace(/-/g, "")}`;
+  const db = secretDb();
+  const { error: insertError } = await db.from("payment_transactions").insert({
+    provider, purpose: "seller_subscription", reference, store_id: m.store.id,
+    customer_id: user.id, amount_ngn: amountNgn, currency: "NGN",
+    subscription_plan: plan, subscription_months: 1, status: "pending",
+  });
+  if (insertError) return { ok: false, message: "We couldn't prepare your subscription payment." };
+
+  try {
+    const origin = process.env.SITE_URL || process.env.NEXT_PUBLIC_SHOP_URL || "https://fastchina.shop";
+    const callbackUrl = new URL("/api/payments/callback", origin);
+    callbackUrl.searchParams.set("provider", provider);
+    const hosted = await startHostedPayment({
+      provider: provider as PaymentProvider, reference, amountNgn, email: user.email,
+      name: typeof user.user_metadata.full_name === "string" ? user.user_metadata.full_name : undefined,
+      callbackUrl: callbackUrl.toString(), description: `FastChina ${plan.toUpperCase()} monthly seller plan`,
+    });
+    const { error } = await db.from("payment_transactions")
+      .update({ checkout_url: hosted.checkoutUrl, provider_transaction_id: hosted.providerTransactionId })
+      .eq("provider", provider).eq("reference", reference);
+    if (error) throw error;
+    return { ok: true, message: "Opening secure payment checkout…", checkoutUrl: hosted.checkoutUrl };
+  } catch {
+    await db.from("payment_transactions").update({ status: "failed" }).eq("provider", provider).eq("reference", reference);
+    return { ok: false, message: "The payment provider could not start checkout. No payment was taken." };
+  }
 }
