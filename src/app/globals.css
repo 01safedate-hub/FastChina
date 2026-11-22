@@ -174,3 +174,13 @@ input[type="search"]::-webkit-search-decoration {
 @media (prefers-reduced-motion: reduce) {
   .promo-float, .promo-float-slow, .promo-fade { animation: none; }
 }
+
+
+/* Keep the compact mobile search Hot List titles to exactly two lines. */
+.hot-list-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
