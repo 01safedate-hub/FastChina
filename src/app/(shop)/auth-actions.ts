@@ -132,6 +132,32 @@ export async function updateProfile(input: { name?: unknown; phone?: unknown }):
   return error ? { ok: false, message: "Couldn’t save. Try again." } : { ok: true };
 }
 
+/** Save only an avatar object belonging to the signed-in user's own Storage folder. */
+export async function updateAvatar(path: unknown): Promise<Result> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: "Sign in first." };
+  if (typeof path !== "string" || !new RegExp(`^${user.id}/avatar\\.(jpg|png|webp)$`).test(path)) {
+    return { ok: false, message: "Invalid profile photo." };
+  }
+  const { error } = await (await userDb()).auth.updateUser({ data: { avatar_path: path } });
+  return error ? { ok: false, message: "Couldn’t save your profile photo. Try again." } : { ok: true };
+}
+
+/** Remove the signed-in user's avatar object and clear its metadata. */
+export async function removeAvatar(): Promise<Result> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: "Sign in first." };
+  const db = await userDb();
+  const { data } = await db.auth.getUser();
+  const path = data.user?.user_metadata?.avatar_path;
+  if (typeof path === "string" && path.startsWith(`${user.id}/avatar.`)) {
+    const { error } = await db.storage.from("avatars").remove([path]);
+    if (error) return { ok: false, message: "Couldn’t remove your profile photo. Try again." };
+  }
+  const { error } = await db.auth.updateUser({ data: { avatar_path: null } });
+  return error ? { ok: false, message: "Couldn’t update your profile. Try again." } : { ok: true };
+}
+
 /** Saves the primary pickup station for a signed-in customer. Guests keep it on the device. */
 export async function setMyStation(stationId: unknown): Promise<Result> {
   if (typeof stationId !== "string" || stationId.length > 40) return { ok: false, message: "Unknown station." };
