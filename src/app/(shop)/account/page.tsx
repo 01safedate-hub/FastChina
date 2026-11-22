@@ -22,7 +22,19 @@ export default function AccountPage() {
     // Phones: one column. Desktop: the profile on the left (sticky), picks fill the rest.
     <div className="flex w-full flex-col gap-2.5 bg-surface pb-8 md:bg-transparent md:pt-6 lg:grid lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start lg:gap-6">
       <div className="flex flex-col gap-2.5 lg:sticky lg:top-28">
-        <Suspense fallback={<div className="m-3 h-64 animate-pulse rounded-2xl bg-white md:m-0" />}>
+        <Suspense fallback={
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center gap-3 bg-white px-4 py-4 md:rounded-2xl md:border md:border-line">
+              <div className="size-14 shrink-0 animate-pulse rounded-full bg-[#EDEDED]" />
+              <div className="flex flex-1 flex-col gap-2">
+                <div className="h-4 w-32 animate-pulse rounded bg-[#EDEDED]" />
+                <div className="h-3 w-20 animate-pulse rounded bg-[#EDEDED]" />
+              </div>
+            </div>
+            <div className="mx-2 h-28 animate-pulse rounded-2xl bg-[#EDEDED] md:mx-0" />
+            <div className="mx-2 h-36 animate-pulse rounded-2xl bg-[#EDEDED] md:mx-0" />
+          </div>
+        }>
           <Profile />
         </Suspense>
       </div>
