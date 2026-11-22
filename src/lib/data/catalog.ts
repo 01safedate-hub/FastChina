@@ -109,6 +109,61 @@ export async function getProducts(): Promise<Product[]> {
   return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
 }
 
+export interface ProductFeedPage {
+  products: Product[];
+  nextCursor: string | null;
+}
+
+/**
+ * A stable, server-backed catalogue page. The cursor uses sale_count + slug so products
+ * with the same sales count have a deterministic order and are not repeated between pages.
+ */
+export async function getProductFeedPage(cursor?: string | null, pageSize = 12): Promise<ProductFeedPage> {
+  const size = Math.min(24, Math.max(1, Math.floor(pageSize)));
+  const parsed = cursor ? /^(\\d+):([a-z0-9-]+)$/.exec(cursor) : null;
+  if (cursor && !parsed) throw new Error("Invalid catalogue cursor");
+
+  if (!hasSupabase) {
+    const all = SAMPLE_PRODUCTS.map(sampleToProduct).sort((a, b) => b.sold - a.sold || a.slug.localeCompare(b.slug));
+    const remaining = parsed
+      ? all.filter((p) => p.sold < Number(parsed[1]) || (p.sold === Number(parsed[1]) && p.slug > parsed[2]))
+      : all;
+    const page = remaining.slice(0, size + 1);
+    const hasMore = page.length > size;
+    const products = page.slice(0, size);
+    const last = products[products.length - 1];
+    return {
+      products,
+      nextCursor: hasMore && last ? `${last.sold}:${last.slug}` : null,
+    };
+  }
+
+  let query = publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(size + 1);
+
+  if (parsed) {
+    const sold = Number(parsed[1]);
+    const slug = parsed[2];
+    query = query.or(`sale_count.lt.${sold},and(sale_count.eq.${sold},slug.gt.${slug})`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(`Catalogue feed: ${error.message}`);
+  const rows = ((data ?? []) as unknown as Row[]);
+  const hasMore = rows.length > size;
+  const products = rows.slice(0, size).map(rowToProduct).filter((p): p is Product => p !== null);
+  const last = rows[Math.min(size, rows.length) - 1];
+  return {
+    products,
+    nextCursor: hasMore && last ? `${last.sale_count}:${last.slug}` : null,
+  };
+}
+
 export async function getProduct(slug: string): Promise<Product | null> {
   "use cache";
   cacheLife("minutes");
