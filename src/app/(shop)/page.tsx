@@ -10,7 +10,7 @@ import { Countdown } from "@/components/ui/countdown";
 import { InfoButton } from "@/components/ui/info-button";
 import { ProductIcon } from "@/components/ui/product-icon";
 import { JsonLd } from "@/components/seo/json-ld";
-import { getProductFeedPage, getProducts } from "@/lib/data/catalog";
+import { getHomeProducts, getProductFeedPage } from "@/lib/data/catalog";
 import { imageMap, imagesFor } from "@/lib/catalog/thumbs";
 import { RotatingPhoto } from "@/components/shop/rotating-photo";
 import { CATEGORY_PAGES } from "@/lib/content/category-pages";
@@ -32,7 +32,7 @@ const BUBBLES = [
 ] as const;
 
 export default async function HomePage() {
-  const [products, feed] = await Promise.all([getProducts(), getProductFeedPage()]);
+  const [products, feed] = await Promise.all([getHomeProducts(), getProductFeedPage()]);
   const byLowestPrice = [...products].sort((a, b) => a.prices.list - b.prices.list || a.name.localeCompare(b.name));
   const underFiveK = byLowestPrice.filter((product) => product.prices.list < 5_000).slice(0, 12);
   const underTenK = byLowestPrice.filter((product) => product.prices.list < 10_000).slice(0, 12);
