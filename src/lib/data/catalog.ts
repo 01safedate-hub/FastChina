@@ -70,7 +70,7 @@ function rowToProduct(r: Row): Product | null {
     category: (r.categories?.slug ?? "home") as CategoryKey,
     isGadget: r.categories?.is_gadget ?? false,
     shipMode: r.categories?.ship_mode ?? "air",
-    images: r.main_images ?? [],
+    images: [...new Set([...(r.main_images ?? []), ...r.product_skus.map((sku) => sku.image_url).filter((url): url is string => Boolean(url))])],
     tint: r.tint ?? "#ECECEC",
     icon: (r.icon ?? "gift") as IconKey,
     rating: Number(r.rating ?? 0),
@@ -453,22 +453,72 @@ export async function getSearchProductsPage(q: string, offset = 0, pageSize = 24
   return { products, nextCursor: nextOffset < rankedSlugs.length ? String(nextOffset) : null };
 }
 
-/** Real best-selling products for the search discovery Hot List. */
+/**
+ * Products ranked by purchased quantities in paid orders. If no qualifying order
+ * items exist yet, fall back to the catalogue's accumulated sale_count ranking.
+ */
 export async function getHotSearchProducts(): Promise<Product[]> {
   if (!hasSupabase) {
     return SAMPLE_PRODUCTS.map(sampleToProduct).sort((a, b) => b.sold - a.sold).slice(0, 9);
   }
+
+  const { data: orderItems, error: orderError } = await publicDb()
+    .from("order_items")
+    .select("qty, removed_at, orders!inner(paid_at, status), product_skus!inner(products!inner(slug))")
+    .is("removed_at", null)
+    .not("orders.paid_at", "is", null)
+    .not("orders.status", "in", '("cancelled","refunded")');
+
+  if (orderError) throw new Error(`Search hot list orders: ${orderError.message}`);
+
+  type PurchasedItem = {
+    qty: number;
+    product_skus: { products: { slug: string } | null } | null;
+  };
+  const quantities = new Map<string, number>();
+  for (const item of (orderItems ?? []) as unknown as PurchasedItem[]) {
+    const slug = item.product_skus?.products?.slug;
+    if (slug) quantities.set(slug, (quantities.get(slug) ?? 0) + Math.max(0, Number(item.qty) || 0));
+  }
+
+  let rankedSlugs = [...quantities.entries()]
+    .filter(([, quantity]) => quantity > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 9)
+    .map(([slug]) => slug);
+
+  // A new store may not have any paid orders yet. In that case use lifetime sales.
+  if (!rankedSlugs.length) {
+    const { data, error } = await publicDb()
+      .from("products")
+      .select("slug")
+      .in("status", ["active", "sold_out"])
+      .order("sale_count", { ascending: false })
+      .order("slug", { ascending: true })
+      .limit(9);
+    if (error) throw new Error(`Search hot list fallback: ${error.message}`);
+    rankedSlugs = (data ?? []).map((product) => product.slug);
+  }
+
+  if (!rankedSlugs.length) return [];
+
   const { data, error } = await publicDb()
     .from("products")
     .select(PRODUCT_COLUMNS)
     .in("status", ["active", "sold_out"])
-    .order("sale_count", { ascending: false })
-    .order("slug", { ascending: true })
-    .limit(9);
-  if (error) throw new Error(`Search hot list: ${error.message}`);
-  return ((data ?? []) as unknown as Row[])
-    .map(rowToProduct)
-    .filter((product): product is Product => product !== null);
+    .in("slug", rankedSlugs);
+  if (error) throw new Error(`Search hot list products: ${error.message}`);
+
+  const bySlug = new Map(
+    ((data ?? []) as unknown as Row[])
+      .map(rowToProduct)
+      .filter((product): product is Product => product !== null)
+      .map((product) => [product.slug, product]),
+  );
+  return rankedSlugs.flatMap((slug) => {
+    const product = bySlug.get(slug);
+    return product ? [product] : [];
+  });
 }
 
 /** Saves a new question as pending; staff answer it in admin. Server-only (uses the secret key). */
