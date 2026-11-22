@@ -11,8 +11,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  let event: any;
-  try { event = JSON.parse(raw); } catch { return NextResponse.json({ error: "Invalid payload" }, { status: 400 }); }
+  let event: { event?: unknown; data?: { reference?: unknown; tx_ref?: unknown; id?: unknown } };
+  try { event = JSON.parse(raw) as typeof event; } catch { return NextResponse.json({ error: "Invalid payload" }, { status: 400 }); }
   if (event?.event !== "charge.success" || !event?.data?.reference || event?.data?.id == null) {
     return NextResponse.json({ received: true });
   }
