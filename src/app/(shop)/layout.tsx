@@ -20,10 +20,10 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
         <ShopHeader />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1360px] bg-[#f3f4f6] text-[13px] outline-none md:px-6">{children}</main>
         <ShopFooter />
-        <TabBar />
         <OfflineBanner />
         <WelcomeSheet />
         <div aria-hidden className="bolt-sweep" />
+        <TabBar />
         </WishlistProvider>
       </CartProvider>
     </SiteDataProvider>
