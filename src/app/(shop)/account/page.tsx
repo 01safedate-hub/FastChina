@@ -33,11 +33,9 @@ export default function AccountPage() {
         }>
           <CustomerHeader />
         </Suspense>
-        <Suspense fallback={null}>
-          <Profile />
-        </Suspense>
+        <Profile />
       </div>
-      <Suspense fallback={null}>
+      <Suspense fallback={<PicksFallback />}>
         <Picks />
       </Suspense>
     </div>
