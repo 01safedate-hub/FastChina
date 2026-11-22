@@ -18,12 +18,12 @@ export async function startOrderPayment(input: {
   const provider = input.provider;
   if (provider !== "paystack" && provider !== "flutterwave") return { ok: false, message: "Choose a payment provider." };
   const code = typeof input.code === "string" ? input.code.trim().toUpperCase() : "";
-  const phoneDigits = typeof input.phone === "string" ? input.phone.replace(/\\D/g, "") : "";
+  const phoneDigits = typeof input.phone === "string" ? input.phone.replace(/\D/g, "") : "";
   const phone = phoneDigits.startsWith("234") ? `+${phoneDigits}` : phoneDigits.startsWith("0") ? `+234${phoneDigits.slice(1)}` : "";
   const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
   const amount = Number(input.amountNgn);
-  if (!/^[A-Z0-9]{8}$/.test(code) || !/^\\+234[789][01]\\d{8}$/.test(phone)) return { ok: false, message: "Order details could not be validated." };
-  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) return { ok: false, message: "Enter a valid email address for your payment receipt." };
+  if (!/^[A-Z0-9]{8}$/.test(code) || !/^\+234[789][01]\d{8}$/.test(phone)) return { ok: false, message: "Order details could not be validated." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return { ok: false, message: "Enter a valid email address for your payment receipt." };
   if (!Number.isSafeInteger(amount) || amount <= 0) return { ok: false, message: "Invalid payment amount." };
   if (!(await allow("payment-start", 5, 600))) return { ok: false, message: TOO_MANY };
 
