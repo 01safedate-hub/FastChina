@@ -77,7 +77,7 @@ as $$
 declare payment public.payment_transactions;
 declare remaining bigint;
 begin
-  if coalesce(auth.role(), '') <> 'service_role' then
+  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
     raise exception 'Not allowed' using errcode = 'insufficient_privilege';
   end if;
   if p_provider not in ('paystack', 'flutterwave') or p_currency <> 'NGN' or p_amount_ngn <= 0 then
