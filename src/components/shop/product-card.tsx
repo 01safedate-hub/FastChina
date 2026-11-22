@@ -44,7 +44,7 @@ export function ProductTile({ tint, icon, name, image, badge, className = "", ic
   );
 }
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product, compact: compactCard = false }: { product: Product; compact?: boolean }) {
   const single = product.variants.length === 1 ? product.variants[0] : null;
   return (
     <article className="relative flex min-w-0 flex-col">
@@ -53,12 +53,12 @@ export function ProductCard({ product }: { product: Product }) {
           <ProductTile tint={product.tint} icon={product.icon} name={product.name} image={product.images[0]} badge={product.badge} className="aspect-square w-full bg-transparent" />
           <ShipTag sea={product.shipMode === "sea"} className="absolute bottom-2 left-1.5" />
         </span>
-        <span className="mt-0.5 line-clamp-2 min-h-[2.5rem] text-xs leading-5 text-[#333] md:text-[13px]">
+        <span className={`mt-0.5 line-clamp-2 text-[#333] ${compactCard ? "min-h-9 text-[11px] leading-4" : "min-h-[2.5rem] text-xs leading-5 md:text-[13px]"}`}>
           {product.customisable && <span className="mr-1 rounded-sm bg-[#FFF1D6] px-1 py-px text-[9px] font-extrabold text-[#8A5A00]">CUSTOM</span>}
           {product.name}
         </span>
         <span className="flex items-baseline gap-1.5">
-          <LivePrice prices={product.prices} slug={product.slug} className="text-[15px] font-extrabold" showWas />
+          <LivePrice prices={product.prices} slug={product.slug} className={compactCard ? "text-[13px] font-extrabold" : "text-[15px] font-extrabold"} showWas />
         </span>
         <span className="text-[11px] text-subtle">
           {compact(product.sold)} sold · ★ {product.rating}
