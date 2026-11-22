@@ -162,8 +162,8 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
             <h2 className="flex items-center gap-1.5 text-base font-extrabold"><span className="rounded-sm bg-[#F5DE9A] px-1.5 py-0.5 text-[11px] text-gold-ink">HOT</span>FastChina Hot List</h2>
             <div className="grid grid-cols-3 gap-2">
               {hotProducts.map((product, index) => (
-                <button key={product.slug} type="button" onClick={() => go(product.name)} className="flex flex-col overflow-hidden rounded-md bg-[#fafafa]">
-                  <span className="relative flex h-[104px] w-full items-center justify-center md:h-36" style={{ background: product.tint }}>
+                <button key={product.slug} type="button" onClick={() => go(product.name)} className="flex min-w-0 flex-col overflow-hidden rounded-md bg-[#fafafa]">
+                  <span className="relative flex h-[112px] w-full shrink-0 items-center justify-center md:h-36" style={{ background: product.tint }}>
                     <ProductTile
                       tint={product.tint}
                       icon={product.icon}
@@ -172,10 +172,11 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
                       className="absolute inset-0"
                       iconSize={44}
                       sizes="(min-width: 768px) 200px, 33vw"
+                      unoptimized
                     />
                     <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-sm bg-[#FFF6DA] px-2 py-0.5 text-[11px] font-extrabold text-gold-ink">TOP {index + 1}</span>
                   </span>
-                  <span className="line-clamp-2 min-h-[2.5rem] p-1.5 text-center text-[11px] leading-tight text-gold-ink">{product.name}</span>
+                  <span className="hot-list-title h-[2.75rem] overflow-hidden p-1.5 text-center text-[11px] leading-[1.25rem] text-gold-ink">{product.name}</span>
                 </button>
               ))}
             </div>
