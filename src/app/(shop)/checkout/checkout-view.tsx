@@ -246,7 +246,7 @@ export function CheckoutView() {
             ))}
           </div>
 
-          {mode === "full" && (
+          {(mode === "full" || mode === "small") && (
             <div className="flex flex-col gap-1.5" role="radiogroup" aria-label="Payment method">
               <label className="flex flex-col gap-1 text-xs font-bold">
                 Email for payment receipt
