@@ -406,6 +406,71 @@ export async function searchSlugs(q: string): Promise<string[] | null> {
   return ((data ?? []) as { slug: string }[]).map((r) => r.slug);
 }
 
+/**
+ * Search results are hydrated a page at a time. The existing search_products RPC ranks
+ * up to 120 slugs; this keeps the RPC unchanged while avoiding a full-catalogue page load.
+ */
+export async function getSearchProductsPage(q: string, offset = 0, pageSize = 24): Promise<ProductFeedPage> {
+  const size = Math.min(24, Math.max(1, Math.floor(pageSize)));
+  const start = Math.max(0, Math.floor(offset));
+  const term = q.trim().slice(0, 120);
+  if (term.length < 2) return { products: [], nextCursor: null };
+
+  if (!hasSupabase) {
+    const words = term.toLowerCase().split(/\\s+/).filter((word) => word.length > 1);
+    const matches = SAMPLE_PRODUCTS.map(sampleToProduct).filter((p) =>
+      words.some((word) => `${p.name} ${p.category} ${p.description}`.toLowerCase().includes(word.replace(/s$/, ""))),
+    );
+    const page = matches.slice(start, start + size + 1);
+    return {
+      products: page.slice(0, size),
+      nextCursor: page.length > size ? String(start + size) : null,
+    };
+  }
+
+  const rankedSlugs = (await searchSlugs(term)) ?? [];
+  const pageSlugs = rankedSlugs.slice(start, start + size);
+  if (!pageSlugs.length) return { products: [], nextCursor: null };
+
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .in("slug", pageSlugs);
+  if (error) throw new Error(`Search results: ${error.message}`);
+
+  const bySlug = new Map(
+    ((data ?? []) as unknown as Row[])
+      .map(rowToProduct)
+      .filter((product): product is Product => product !== null)
+      .map((product) => [product.slug, product]),
+  );
+  const products = pageSlugs.flatMap((slug) => {
+    const product = bySlug.get(slug);
+    return product ? [product] : [];
+  });
+  const nextOffset = start + pageSlugs.length;
+  return { products, nextCursor: nextOffset < rankedSlugs.length ? String(nextOffset) : null };
+}
+
+/** Real best-selling products for the search discovery Hot List. */
+export async function getHotSearchProducts(): Promise<Product[]> {
+  if (!hasSupabase) {
+    return SAMPLE_PRODUCTS.map(sampleToProduct).sort((a, b) => b.sold - a.sold).slice(0, 9);
+  }
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(9);
+  if (error) throw new Error(`Search hot list: ${error.message}`);
+  return ((data ?? []) as unknown as Row[])
+    .map(rowToProduct)
+    .filter((product): product is Product => product !== null);
+}
+
 /** Saves a new question as pending; staff answer it in admin. Server-only (uses the secret key). */
 export async function insertQuestion(slug: string, question: string, name: string): Promise<"ok" | "unknown-product" | "busy"> {
   if (!hasSupabase) return "ok";
