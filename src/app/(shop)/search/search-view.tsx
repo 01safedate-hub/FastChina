@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ProductCard, ProductTile } from "@/components/shop/product-card";
+import { ProductCard } from "@/components/shop/product-card";
+import { ProductIcon } from "@/components/ui/product-icon";
 import type { Product } from "@/lib/catalog/types";
 import { cn } from "@/lib/format";
 
@@ -164,16 +165,21 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
               {hotProducts.map((product, index) => (
                 <button key={product.slug} type="button" onClick={() => go(product.name)} className="flex min-w-0 flex-col overflow-hidden rounded-md bg-[#fafafa]">
                   <span className="relative flex h-[112px] w-full shrink-0 items-center justify-center md:h-36" style={{ background: product.tint }}>
-                    <ProductTile
-                      tint={product.tint}
-                      icon={product.icon}
-                      name={product.name}
-                      image={product.images[0]}
-                      className="absolute inset-0"
-                      iconSize={44}
-                      sizes="(min-width: 768px) 200px, 33vw"
-                      unoptimized
-                    />
+                    {product.images[0] ? (
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        loading="eager"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        className="absolute inset-0 h-full w-full object-contain"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <ProductIcon icon={product.icon} size={44} />
+                    )}
                     <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-sm bg-[#FFF6DA] px-2 py-0.5 text-[11px] font-extrabold text-gold-ink">TOP {index + 1}</span>
                   </span>
                   <span className="hot-list-title h-[2.75rem] overflow-hidden p-1.5 text-center text-[11px] leading-[1.25rem] text-gold-ink">{product.name}</span>
