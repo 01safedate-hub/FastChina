@@ -7,7 +7,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { ProductCard } from "@/components/shop/product-card";
 import { getProducts } from "@/lib/data/catalog";
-import { getMe, ORDER_GROUPS, type OrderGroup } from "@/lib/data/me";
+import { getCustomerIdentity, getMe, ORDER_GROUPS, type OrderGroup } from "@/lib/data/me";
 import { getSiteData } from "@/lib/data/site";
 import { naira } from "@/lib/format";
 import { trackingStep, type OrderStatus } from "@/lib/orders/lifecycle";
@@ -23,18 +23,17 @@ export default function AccountPage() {
     <div className="flex w-full flex-col gap-2.5 bg-surface pb-8 md:bg-transparent md:pt-6 lg:grid lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start lg:gap-6">
       <div className="flex flex-col gap-2.5 lg:sticky lg:top-28">
         <Suspense fallback={
-          <div className="flex flex-col gap-2.5">
-            <div className="flex items-center gap-3 bg-white px-4 py-4 md:rounded-2xl md:border md:border-line">
-              <div className="size-14 shrink-0 animate-pulse rounded-full bg-[#EDEDED]" />
-              <div className="flex flex-1 flex-col gap-2">
-                <div className="h-4 w-32 animate-pulse rounded bg-[#EDEDED]" />
-                <div className="h-3 w-20 animate-pulse rounded bg-[#EDEDED]" />
-              </div>
+          <div className="flex items-center gap-3 bg-white px-4 py-4 md:rounded-2xl md:border md:border-line">
+            <div className="size-14 shrink-0 animate-pulse rounded-full bg-[#EDEDED]" />
+            <div className="flex flex-1 flex-col gap-2">
+              <div className="h-4 w-32 animate-pulse rounded bg-[#EDEDED]" />
+              <div className="h-3 w-20 animate-pulse rounded bg-[#EDEDED]" />
             </div>
-            <div className="mx-2 h-28 animate-pulse rounded-2xl bg-[#EDEDED] md:mx-0" />
-            <div className="mx-2 h-36 animate-pulse rounded-2xl bg-[#EDEDED] md:mx-0" />
           </div>
         }>
+          <CustomerHeader />
+        </Suspense>
+        <Suspense fallback={null}>
           <Profile />
         </Suspense>
       </div>
@@ -45,9 +44,9 @@ export default function AccountPage() {
   );
 }
 
-async function Profile() {
+async function CustomerHeader() {
   await connection();
-  const [me, site] = await Promise.all([getMe(), getSiteData()]);
+  const me = await getCustomerIdentity();
 
   if (!me) {
     return (
@@ -76,25 +75,34 @@ async function Profile() {
   }
 
   const initial = me.name.trim()[0]?.toUpperCase() ?? "F";
+  return (
+    <section className="flex items-center gap-3 bg-white px-4 py-4 md:rounded-2xl md:border md:border-line">
+      {me.avatarUrl ? (
+        <img src={me.avatarUrl} alt="" className="size-14 shrink-0 rounded-full border-2 border-ink object-cover" />
+      ) : (
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-ink text-xl font-extrabold text-white">{initial}</span>
+      )}
+      <Link href="/account/settings/profile" className="flex min-w-0 flex-1 flex-col">
+        <h1 className="truncate text-[18px] font-extrabold">{me.name}</h1>
+        <span className="text-[13px] text-muted">My profile ›</span>
+      </Link>
+      <Link href="/notifications" aria-label="Notifications" className="flex size-11 items-center justify-center"><Bell aria-hidden size={22} strokeWidth={1.6} /></Link>
+      <Link href="/account/settings" aria-label="Settings" className="flex size-11 items-center justify-center"><Settings aria-hidden size={22} strokeWidth={1.6} /></Link>
+    </section>
+  );
+}
+
+async function Profile() {
+  await connection();
+  const [me, site] = await Promise.all([getMe(), getSiteData()]);
+  if (!me) return null;
+
+  const initial = me.name.trim()[0]?.toUpperCase() ?? "F";
   const staff = me.role !== "customer" && me.role !== "seller";
   const latest = me.orders.find((o) => !["delivered", "cancelled", "refunded"].includes(o.status));
 
   return (
     <>
-      <section className="flex items-center gap-3 bg-white px-4 py-4 md:rounded-2xl md:border md:border-line">
-        {me.avatarUrl ? (
-          <img src={me.avatarUrl} alt="" className="size-14 shrink-0 rounded-full object-cover" />
-        ) : (
-          <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-ink text-xl font-extrabold text-white">{initial}</span>
-        )}
-        <Link href="/account/settings/profile" className="flex min-w-0 flex-1 flex-col">
-          <h1 className="truncate text-[18px] font-extrabold">{me.name}</h1>
-          <span className="text-[13px] text-muted">My profile ›</span>
-        </Link>
-        <Link href="/notifications" aria-label="Notifications" className="flex size-11 items-center justify-center"><Bell aria-hidden size={22} strokeWidth={1.6} /></Link>
-        <Link href="/account/settings" aria-label="Settings" className="flex size-11 items-center justify-center"><Settings aria-hidden size={22} strokeWidth={1.6} /></Link>
-      </section>
-
       <section className="mx-2 overflow-hidden rounded-2xl bg-white md:mx-0 md:border md:border-line">
         <div className="grid grid-cols-4 py-3.5 text-center">
           {[
