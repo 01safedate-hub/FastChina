@@ -178,7 +178,22 @@ export async function getProduct(slug: string): Promise<Product | null> {
 }
 
 export async function getProductSlugs(): Promise<string[]> {
-  return (await getProducts()).map((p) => p.slug);
+  if (!hasSupabase) return SAMPLE_PRODUCTS.map((p) => p.slug);
+
+  // Static generation only needs a small set of representative product routes.
+  // Fetching the full product + SKU + category graph here made Netlify build-time
+  // page-data collection time out as the catalogue grew. Other product routes
+  // are rendered on demand by Next.js.
+  const { data, error } = await publicDb()
+    .from("products")
+    .select("slug")
+    .in("status", ["active", "sold_out"])
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(24);
+
+  if (error) throw new Error(`Product slugs: ${error.message}`);
+  return (data ?? []).map((row) => row.slug);
 }
 
 export interface LineRequest {
