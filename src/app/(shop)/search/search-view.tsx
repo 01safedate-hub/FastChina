@@ -99,6 +99,7 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
       if (saved) {
         const parsed: unknown = JSON.parse(saved);
         if (Array.isArray(parsed)) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate browser-persisted searches once on mount.
           setRecent(parsed.filter((item): item is string => typeof item === "string").slice(0, 8));
         }
       }
@@ -108,6 +109,7 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the page when the shuffled discovery window changes.
     setDiscoveryPage(0);
   }, [discoveryWindow]);
 
@@ -161,6 +163,7 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
     activeRequest.current?.abort();
     requestId.current += 1;
     loadingRef.current = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- cancel the previous query before scheduling the next one.
     setLoading(false);
 
     if (currentTerm.length < 2) {
