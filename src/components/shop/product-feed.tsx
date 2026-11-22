@@ -160,7 +160,7 @@ export function ProductFeed({
               return (
                 <Fragment key={p.slug}>
                   <ProductCard product={p} />
-                  {n % 12 === 5 && <PromoTile slot={Math.floor(n / 12)} images={photos} />}
+                  {n % 12 === 5 && <PromoTile slot={Math.floor(n / 12)} images={photos} />}\n                  {tab === "For You" && n % 12 === 0 && collections[(n / 12 - 1) % collections.length] && (\n                    <div className="col-span-2 min-w-0 py-2 md:col-span-full">\n                      <PriceCarousel title={collections[(n / 12 - 1) % collections.length].title} products={collections[(n / 12 - 1) % collections.length].products} />\n                    </div>\n                  )}
                   {spotSlot && <SpotlightCarousel product={spot} rank={spot ? ranks.get(spot.slug) : undefined} className="col-span-2 aspect-[16/11] sm:aspect-[2/1]" images={photos} />}
                 </Fragment>
               );
