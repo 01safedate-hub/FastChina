@@ -152,12 +152,12 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
                   <h2 className="text-base font-extrabold">Recent searches</h2>
                   <button type="button" aria-label="Clear recent searches" onClick={() => setRecent([])} className="flex size-10 items-center justify-center text-muted"><Trash2 aria-hidden size={18} /></button>
                 </div>
-                <div className="flex flex-wrap gap-2">{recent.map((item) => <button key={item} type="button" onClick={() => go(item)} className="min-h-[38px] bg-surface px-3.5 text-sm text-[#333]">{item}</button>)}</div>
+                <div className="flex flex-wrap gap-2">{recent.map((item) => <button key={item} type="button" onClick={() => go(item)} className="min-h-[38px] rounded-full border border-black/15 bg-white px-3.5 text-sm text-[#333] transition-colors hover:border-ink hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">{item}</button>)}</div>
               </section>
             )}
             <section className="flex flex-col gap-2.5">
               <h2 className="text-base font-extrabold">Search discovery</h2>
-              <div className="flex flex-wrap gap-2">{DISCOVER.map((item) => <button key={item} type="button" onClick={() => go(item)} className="min-h-[38px] bg-surface px-3.5 text-sm text-[#333]">{item}</button>)}</div>
+              <div className="flex flex-wrap gap-2">{DISCOVER.map((item) => <button key={item} type="button" onClick={() => go(item)} className="min-h-[38px] rounded-full border border-black/15 bg-white px-3.5 text-sm text-[#333] transition-colors hover:border-ink hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">{item}</button>)}</div>
             </section>
           </div>
           <section className="flex flex-col gap-2.5">
