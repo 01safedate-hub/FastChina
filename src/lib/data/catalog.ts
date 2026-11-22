@@ -113,7 +113,7 @@ export async function getProducts(): Promise<Product[]> {
 export interface CategoryPhotoProduct {
   slug: string;
   name: string;
-  category: string;
+  category: CategoryKey;
   images: string[];
   sold: number;
   wholesale: boolean;
@@ -146,7 +146,7 @@ export async function getCategoryPhotoProducts(): Promise<CategoryPhotoProduct[]
   return ((data ?? []) as unknown as PhotoRow[]).map((row) => ({
     slug: row.slug,
     name: row.title,
-    category: row.categories?.slug ?? "home",
+    category: (row.categories?.slug ?? "home") as CategoryKey,
     images: row.main_images ?? [],
     sold: row.sale_count ?? 0,
     wholesale: row.wholesale === true,
