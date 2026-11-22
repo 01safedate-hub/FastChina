@@ -120,7 +120,7 @@ export interface ProductFeedPage {
  */
 export async function getProductFeedPage(cursor?: string | null, pageSize = 12): Promise<ProductFeedPage> {
   const size = Math.min(24, Math.max(1, Math.floor(pageSize)));
-  const parsed = cursor ? /^(\\d+):([a-z0-9-]+)$/.exec(cursor) : null;
+  const parsed = cursor ? /^(\d+):([a-z0-9-]+)$/.exec(cursor) : null;
   if (cursor && !parsed) throw new Error("Invalid catalogue cursor");
 
   if (!hasSupabase) {
