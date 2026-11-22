@@ -36,6 +36,20 @@ export default async function HomePage() {
   const byLowestPrice = [...products].sort((a, b) => a.prices.list - b.prices.list || a.name.localeCompare(b.name));
   const underFiveK = byLowestPrice.filter((product) => product.prices.list < 5_000).slice(0, 12);
   const fiveToTenK = byLowestPrice.filter((product) => product.prices.list >= 5_000 && product.prices.list < 10_000).slice(0, 12);
+  const bySales = [...products].sort((a, b) => b.sold - a.sold);
+  const byNewest = [...products].filter((p) => p.isNew || p.addedAt).sort((a, b) => Number(!!b.isNew) - Number(!!a.isNew) || (b.addedAt ?? 0) - (a.addedAt ?? 0));
+  const inCategories = (keys: string[]) => products.filter((p) => keys.includes(String(p.category)));
+  const feedCollections = [
+    { title: "Trending Now", products: bySales.slice(0, 12) },
+    { title: "Budget Finds", products: byLowestPrice.slice(0, 12) },
+    { title: "Just Arrived", products: byNewest.slice(0, 12) },
+    { title: "Fashion Picks", products: inCategories(["fashion", "hair", "shoes", "bags", "jewellery", "beauty"]).slice(0, 12) },
+    { title: "Under ₦10,000", products: fiveToTenK },
+    { title: "Home & Living", products: inCategories(["home", "furniture", "machines", "kitchen"]).slice(0, 12) },
+    { title: "Wholesale Deals", products: products.filter((p) => p.wholesale && p.wholesaleFrom > 0).slice(0, 12) },
+    { title: "Best Sellers", products: bySales.slice(0, 12) },
+    { title: "Under ₦5,000", products: underFiveK },
+  ];
   const photos = imageMap(products, BUBBLE_PHOTOS);
   const heroPhotos = imageMap(products, {
     gadgets: { category: ["gadgets", "audio"] }, women: { category: ["fashion", "bags", "beauty"], name: "women" },
@@ -115,7 +129,7 @@ export default async function HomePage() {
         <RetailerTile />
       </div>
 
-      <ProductFeed products={feed.products} nextCursor={feed.nextCursor} underFiveK={underFiveK} fiveToTenK={fiveToTenK} />
+      <ProductFeed products={feed.products} nextCursor={feed.nextCursor} underFiveK={underFiveK} fiveToTenK={fiveToTenK} collections={feedCollections} />
 
       <div className="px-3 md:px-0">
         <TrustGrid />
