@@ -39,6 +39,39 @@ export interface Me {
 }
 
 /** Everything the profile screen shows, read as the customer (row level security returns only their own rows). */
+
+export interface CustomerIdentity {
+  id: string;
+  email: string | null;
+  name: string;
+  avatarUrl: string | null;
+}
+
+/** Minimal customer identity for the account header; avoids loading balances and orders. */
+export const getCustomerIdentity = cache(async (): Promise<CustomerIdentity | null> => {
+  if (!hasSupabase) return null;
+  const user = await getSessionUser();
+  if (!user) return null;
+  const db = await userDb();
+  const { data } = await db.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+  const avatarPath = user.user_metadata.avatar_path;
+  let avatarUrl: string | null = null;
+  if (
+    typeof avatarPath === "string" &&
+    avatarPath.startsWith(`${user.id}/avatar-`) &&
+    !avatarPath.slice(user.id.length + 1).includes("/") &&
+    /\\.(jpg|png|webp)$/i.test(avatarPath)
+  ) {
+    avatarUrl = db.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl;
+  }
+  return {
+    id: user.id,
+    email: user.email,
+    name: data?.full_name || user.email?.split("@")[0] || "FastChina customer",
+    avatarUrl,
+  };
+});
+
 export const getMe = cache(async (): Promise<Me | null> => {
   if (!hasSupabase) return null;
   const user = await getSessionUser();
