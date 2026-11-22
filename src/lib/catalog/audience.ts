@@ -11,7 +11,7 @@ export function audienceOf(p: Pick<Product, "name">): "men" | "women" | "all" {
 }
 
 /** Men's department: men's clothing, shoes and jewellery, plus unisex ones. Women's: the same idea. */
-export function inDepartment(p: Product, dept: "men" | "women") {
+export function inDepartment(p: Pick<Product, "name" | "category">, dept: "men" | "women") {
   const cats = dept === "men" ? ["fashion", "jewellery", "shoes"] : ["fashion", "bags", "jewellery", "shoes"];
   if (!cats.includes(p.category)) return false;
   const a = audienceOf(p);
