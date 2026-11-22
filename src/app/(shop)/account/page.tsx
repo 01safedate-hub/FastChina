@@ -92,35 +92,22 @@ async function CustomerHeader() {
   );
 }
 
-async function Profile() {
-  await connection();
-  const [me, site] = await Promise.all([getMe(), getSiteData()]);
-  if (!me) return null;
-
-  const staff = me.role !== "customer" && me.role !== "seller";
-  const latest = me.orders.find((o) => !["delivered", "cancelled", "refunded"].includes(o.status));
-
+function Profile() {
   return (
     <>
       <section className="mx-2 overflow-hidden rounded-2xl bg-white md:mx-0 md:border md:border-line">
-        <div className="grid grid-cols-4 py-3.5 text-center">
-          {[
-            [String(site.coupons.length), "Coupons", "/deals"],
-            [me.points.toLocaleString("en-NG"), "Points", "/deals"],
-            [naira(me.wallet), "Wallet", "/account/wallet"],
-            [String(me.saved), "Saved", "/wishlist"],
-          ].map(([v, l, h]) => (
-            <Link key={l} href={h} className="flex flex-col gap-0.5">
-              <strong className="text-[17px] tabular-nums">{v}</strong>
-              <span className="text-[12px] text-muted">{l}</span>
-            </Link>
-          ))}
-        </div>
-        <Link href="/account/settings/station" className="flex items-center gap-2 border-t border-line bg-success-soft/60 px-4 py-2.5 text-[13px]">
-          <MapPin aria-hidden size={16} className="shrink-0 text-success" />
-          <span className="min-w-0 flex-1 truncate">{me.station ? <>Delivering to <strong>{me.station.name}</strong></> : <strong>Choose your pickup station</strong>}</span>
-          <span className="font-bold">{me.station ? "Change" : "Set"}</span>
-        </Link>
+        <Suspense fallback={<AccountStatsFallback />}>
+          <AccountStats />
+        </Suspense>
+        <Suspense fallback={
+          <Link href="/account/settings/station" className="flex items-center gap-2 border-t border-line bg-success-soft/60 px-4 py-2.5 text-[13px]">
+            <MapPin aria-hidden size={16} className="shrink-0 text-success" />
+            <strong className="min-w-0 flex-1 truncate">Choose your pickup station</strong>
+            <span className="font-bold">Set</span>
+          </Link>
+        }>
+          <PickupStation />
+        </Suspense>
       </section>
 
       <section className="mx-2 flex flex-col gap-3 rounded-2xl bg-white p-4 md:mx-0 md:border md:border-line">
@@ -128,29 +115,9 @@ async function Profile() {
           <h2 className="text-[15px] font-extrabold">My orders</h2>
           <Link href="/account/orders" className="text-[13px] text-muted">View all ›</Link>
         </div>
-        <div className="grid grid-cols-5 text-center">
-          {(Object.keys(ORDER_GROUPS) as OrderGroup[]).map((g) => {
-            const Icon = ORDER_ICONS[g];
-            const n = me.counts[g];
-            return (
-              <Link key={g} href={`/account/orders?tab=${g}`} className="relative flex flex-col items-center gap-1 text-[12px]">
-                <Icon aria-hidden size={26} strokeWidth={1.4} />
-                {ORDER_GROUPS[g].label}
-                {n > 0 && <span className="absolute -top-1.5 left-[calc(50%+6px)] flex h-4 min-w-4 items-center justify-center rounded-full bg-sale px-1 text-[10px] font-extrabold text-white">{n}</span>}
-              </Link>
-            );
-          })}
-        </div>
-        {latest && (
-          <Link href={`/track?code=${latest.code}`} className="flex items-center gap-3 rounded-xl bg-surface p-3">
-            <Plane aria-hidden size={18} className="shrink-0" />
-            <span className="flex min-w-0 flex-1 flex-col">
-              <strong className="text-[13px]">#{latest.code} · {trackingStep(latest.status as OrderStatus).label}</strong>
-              <span className="truncate text-[12px] text-muted">{latest.items.map((i) => i.title).join(", ") || "Your order"}</span>
-            </span>
-            <strong className="text-[13px]">{naira(latest.total_ngn)}</strong>
-          </Link>
-        )}
+        <Suspense fallback={<OrderDetailsFallback />}>
+          <OrderDetails />
+        </Suspense>
       </section>
 
       <section className="mx-2 grid grid-cols-4 gap-y-4 rounded-2xl bg-white p-4 text-center md:mx-0 md:border md:border-line">
@@ -162,7 +129,6 @@ async function Profile() {
           [ScrollText, "Policy", "/legal/terms"],
           [Store, "Open a store", "/store"],
           [Package, "Wholesale", "/wholesale"],
-          ...(staff ? [[Settings, "Admin", "/admin"] as const] : []),
         ].map(([Icon, label, href]) => {
           const I = Icon as typeof Wallet;
           return (
@@ -172,6 +138,7 @@ async function Profile() {
             </Link>
           );
         })}
+        <Suspense fallback={null}><AdminShortcut /></Suspense>
       </section>
 
       <div className="mx-2 md:mx-0">
@@ -181,14 +148,142 @@ async function Profile() {
   );
 }
 
+function AccountStatsFallback() {
+  return (
+    <div className="grid grid-cols-4 py-3.5 text-center" aria-label="Loading account totals">
+      {["Coupons", "Points", "Wallet", "Saved"].map((label) => (
+        <div key={label} className="flex flex-col gap-0.5">
+          <span className="mx-auto h-[21px] w-8 animate-pulse rounded bg-[#EDEDED]" />
+          <span className="text-[12px] text-muted">{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function AccountStats() {
+  await connection();
+  const [me, site] = await Promise.all([getMe(), getSiteData()]);
+  if (!me) return null;
+  return (
+    <div className="grid grid-cols-4 py-3.5 text-center">
+      {[
+        [String(site.coupons.length), "Coupons", "/deals"],
+        [me.points.toLocaleString("en-NG"), "Points", "/deals"],
+        [naira(me.wallet), "Wallet", "/account/wallet"],
+        [String(me.saved), "Saved", "/wishlist"],
+      ].map(([value, label, href]) => (
+        <Link key={label} href={href} className="flex flex-col gap-0.5">
+          <strong className="text-[17px] tabular-nums">{value}</strong>
+          <span className="text-[12px] text-muted">{label}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+async function PickupStation() {
+  await connection();
+  const me = await getMe();
+  if (!me) return null;
+  return (
+    <Link href="/account/settings/station" className="flex items-center gap-2 border-t border-line bg-success-soft/60 px-4 py-2.5 text-[13px]">
+      <MapPin aria-hidden size={16} className="shrink-0 text-success" />
+      <span className="min-w-0 flex-1 truncate">{me.station ? <>Delivering to <strong>{me.station.name}</strong></> : <strong>Choose your pickup station</strong>}</span>
+      <span className="font-bold">{me.station ? "Change" : "Set"}</span>
+    </Link>
+  );
+}
+
+function OrderDetailsFallback() {
+  return (
+    <div className="grid grid-cols-5 text-center">
+      {(Object.keys(ORDER_GROUPS) as OrderGroup[]).map((group) => {
+        const Icon = ORDER_ICONS[group];
+        return (
+          <div key={group} className="flex flex-col items-center gap-1 text-[12px]">
+            <Icon aria-hidden size={26} strokeWidth={1.4} />
+            {ORDER_GROUPS[group].label}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+async function OrderDetails() {
+  await connection();
+  const me = await getMe();
+  if (!me) return null;
+  const latest = me.orders.find((order) => !["delivered", "cancelled", "refunded"].includes(order.status));
+  return (
+    <>
+      <div className="grid grid-cols-5 text-center">
+        {(Object.keys(ORDER_GROUPS) as OrderGroup[]).map((group) => {
+          const Icon = ORDER_ICONS[group];
+          const count = me.counts[group];
+          return (
+            <Link key={group} href={`/account/orders?tab=${group}`} className="relative flex flex-col items-center gap-1 text-[12px]">
+              <Icon aria-hidden size={26} strokeWidth={1.4} />
+              {ORDER_GROUPS[group].label}
+              {count > 0 && <span className="absolute -top-1.5 left-[calc(50%+6px)] flex h-4 min-w-4 items-center justify-center rounded-full bg-sale px-1 text-[10px] font-extrabold text-white">{count}</span>}
+            </Link>
+          );
+        })}
+      </div>
+      {latest && (
+        <Link href={`/track?code=${latest.code}`} className="flex items-center gap-3 rounded-xl bg-surface p-3">
+          <Plane aria-hidden size={18} className="shrink-0" />
+          <span className="flex min-w-0 flex-1 flex-col">
+            <strong className="text-[13px]">#{latest.code} · {trackingStep(latest.status as OrderStatus).label}</strong>
+            <span className="truncate text-[12px] text-muted">{latest.items.map((item) => item.title).join(", ") || "Your order"}</span>
+          </span>
+          <strong className="text-[13px]">{naira(latest.total_ngn)}</strong>
+        </Link>
+      )}
+    </>
+  );
+}
+
+async function AdminShortcut() {
+  await connection();
+  const me = await getMe();
+  if (!me || me.role === "customer" || me.role === "seller") return null;
+  return (
+    <Link href="/admin" className="flex flex-col items-center gap-1.5 text-[12px] leading-tight">
+      <Settings aria-hidden size={24} strokeWidth={1.5} />
+      <span>Admin</span>
+    </Link>
+  );
+}
+
+function PicksFallback() {
+  return (
+    <section aria-labelledby="picks-h" className="flex min-h-[420px] flex-col gap-2 px-2 pt-2 md:px-0 lg:pt-0">
+      <h2 id="picks-h" className="text-[15px] font-extrabold">Picked for you</h2>
+      <div className="grid grid-cols-2 gap-x-1.5 gap-y-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 8 }, (_, index) => (
+          <div key={index} className="flex min-w-0 flex-col gap-2">
+            <div className="aspect-square w-full animate-pulse rounded-sm bg-[#EDEDED]" />
+            <div className="h-4 w-full animate-pulse rounded bg-[#EDEDED]" />
+            <div className="h-4 w-2/3 animate-pulse rounded bg-[#EDEDED]" />
+            <div className="h-5 w-1/2 animate-pulse rounded bg-[#EDEDED]" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 async function Picks() {
+  await connection();
   const products = (await getProducts()).slice(0, 12);
   if (!products.length) return null;
   return (
     <section aria-labelledby="picks-h" className="flex flex-col gap-2 px-2 pt-2 md:px-0 lg:pt-0">
       <h2 id="picks-h" className="text-[15px] font-extrabold">Picked for you</h2>
       <div className="grid grid-cols-2 gap-x-1.5 gap-y-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
-        {products.map((p) => <ProductCard key={p.slug} product={p} />)}
+        {products.map((product) => <ProductCard key={product.slug} product={product} />)}
       </div>
     </section>
   );
