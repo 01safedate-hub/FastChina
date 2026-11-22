@@ -245,7 +245,7 @@ export async function getWholesaleProductSlugs(): Promise<string[]> {
 
   if (error) throw new Error(`Wholesale product slugs: ${error.message}`);
   return (data ?? [])
-    .filter((row) => row.wholesale !== false && row.categories?.wholesale_enabled !== false)
+    .filter((row) => row.wholesale !== false && row.categories?.[0]?.wholesale_enabled !== false)
     .filter((row) => row.product_skus?.some((sku) => sku.active && Number(sku.price_wholesale) > 0))
     .map((row) => row.slug);
 }
