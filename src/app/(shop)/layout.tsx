@@ -1,6 +1,7 @@
 import { CartProvider } from "@/components/shop/cart-provider";
 import { ShopFooter } from "@/components/shop/footer";
 import { ShopHeader } from "@/components/shop/header";
+import { TabBar } from "@/components/shop/tab-bar";
 import { SiteDataProvider } from "@/components/shop/site-data";
 import { OfflineBanner } from "@/components/ui/offline-banner";
 import { WishlistProvider } from "@/components/shop/wishlist-provider";
@@ -22,6 +23,7 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
         <OfflineBanner />
         <WelcomeSheet />
         <div aria-hidden className="bolt-sweep" />
+        <TabBar />
         </WishlistProvider>
       </CartProvider>
     </SiteDataProvider>
