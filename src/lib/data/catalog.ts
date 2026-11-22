@@ -401,7 +401,7 @@ export async function getQuestions(slug: string): Promise<QA[] | null> {
 /** Ranked product slugs for a search, or null when search must run in the browser (no database). */
 export async function searchSlugs(q: string): Promise<string[] | null> {
   if (!hasSupabase) return null;
-  const { data, error } = await publicDb().rpc("search_products", { q, lim: 120 });
+  const { data, error } = await publicDb().rpc("search_products", { q, lim: 200 });
   if (error) throw new Error(`Search: ${error.message}`);
   return ((data ?? []) as { slug: string }[]).map((r) => r.slug);
 }
