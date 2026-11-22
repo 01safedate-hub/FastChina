@@ -109,6 +109,87 @@ export async function getProducts(): Promise<Product[]> {
   return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
 }
 
+/** Minimal catalogue rows used to choose category-tile photos without loading SKU relations. */
+export interface CategoryPhotoProduct {
+  slug: string;
+  name: string;
+  category: string;
+  images: string[];
+  sold: number;
+  wholesale: boolean;
+}
+
+export async function getCategoryPhotoProducts(): Promise<CategoryPhotoProduct[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("catalog");
+  if (!hasSupabase) {
+    return SAMPLE_PRODUCTS.map(sampleToProduct).map((p) => ({
+      slug: p.slug, name: p.name, category: p.category, images: p.images,
+      sold: p.sold, wholesale: p.wholesale,
+    }));
+  }
+
+  const { data, error } = await publicDb()
+    .from("products")
+    .select("slug, title, main_images, sale_count, wholesale, categories(slug)")
+    .in("status", ["active", "sold_out"])
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(1500);
+  if (error) throw new Error(`Category photo catalogue: ${error.message}`);
+
+  type PhotoRow = {
+    slug: string; title: string; main_images: string[] | null; sale_count: number;
+    wholesale: boolean | null; categories: { slug: string } | null;
+  };
+  return ((data ?? []) as unknown as PhotoRow[]).map((row) => ({
+    slug: row.slug,
+    name: row.title,
+    category: row.categories?.slug ?? "home",
+    images: row.main_images ?? [],
+    sold: row.sale_count ?? 0,
+    wholesale: row.wholesale === true,
+  }));
+}
+
+/** Hydrate only the products needed for the currently selected category cards. */
+export async function getProductsBySlugs(slugs: string[]): Promise<Product[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("catalog");
+  const uniqueSlugs = [...new Set(slugs)].slice(0, 10);
+  if (!uniqueSlugs.length) return [];
+  if (!hasSupabase) {
+    const bySlug = new Map(SAMPLE_PRODUCTS.map((sample) => {
+      const product = sampleToProduct(sample);
+      return [product.slug, product] as const;
+    }));
+    return uniqueSlugs.flatMap((slug) => {
+      const product = bySlug.get(slug);
+      return product ? [product] : [];
+    });
+  }
+
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .in("slug", uniqueSlugs);
+  if (error) throw new Error(`Category products: ${error.message}`);
+
+  const bySlug = new Map(
+    ((data ?? []) as unknown as Row[])
+      .map(rowToProduct)
+      .filter((product): product is Product => product !== null)
+      .map((product) => [product.slug, product]),
+  );
+  return uniqueSlugs.flatMap((slug) => {
+    const product = bySlug.get(slug);
+    return product ? [product] : [];
+  });
+}
+
 /** A bounded product set for homepage merchandising modules. */
 export async function getHomeProducts(): Promise<Product[]> {
   "use cache";
