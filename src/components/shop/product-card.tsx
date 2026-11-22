@@ -33,9 +33,9 @@ interface TileProps {
 export function ProductTile({ tint, icon, name, image, badge, className = "", iconSize = 64, sizes = "(min-width: 1024px) 220px, 50vw", priority }: TileProps) {
   const badgeClass = !badge ? "" : badge === "Gadget" ? "bg-ink text-white" : badge.startsWith("TOP") ? "bg-[#F5DE9A] text-gold-ink" : badge === "Business" ? "bg-[#7A5C17] text-white" : "bg-sale text-white";
   return (
-    <span className={`relative flex items-center justify-center overflow-hidden rounded ${className}`} style={{ background: tint }}>
+    <span className={`relative flex items-center justify-center overflow-hidden ${className}`}>
       {image ? (
-        <SafeImage src={image} alt={name} fill sizes={sizes} priority={priority} className="object-contain p-2" fallback={<ProductIcon icon={icon} size={iconSize} />} />
+        <SafeImage src={image} alt={name} fill sizes={sizes} priority={priority} className="object-contain" fallback={<ProductIcon icon={icon} size={iconSize} />} />
       ) : (
         <ProductIcon icon={icon} size={iconSize} />
       )}
@@ -50,7 +50,7 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="relative flex min-w-0 flex-col">
       <Link href={`/product/${product.slug}`} className="flex flex-col gap-1">
         <span className="relative">
-          <ProductTile tint={product.tint} icon={product.icon} name={product.name} image={product.images[0]} badge={product.badge} className="aspect-square w-full bg-white" />
+          <ProductTile tint={product.tint} icon={product.icon} name={product.name} image={product.images[0]} badge={product.badge} className="aspect-square w-full bg-transparent" />
           <ShipTag sea={product.shipMode === "sea"} className="absolute bottom-2 left-1.5" />
         </span>
         <span className="mt-0.5 line-clamp-2 min-h-[2.5rem] text-xs leading-5 text-[#333] md:text-[13px]">
