@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   try { event = JSON.parse(raw) as typeof event; } catch { return NextResponse.json({ error: "Invalid payload" }, { status: 400 }); }
   const reference = typeof event?.data?.tx_ref === "string" ? event.data.tx_ref : "";
   const transactionId = event?.data?.id == null ? "" : String(event.data.id);
-  if (!reference || !/^\\d+$/.test(transactionId) || event?.event !== "charge.completed") {
+  if (!reference || !/^\d+$/.test(transactionId) || event?.event !== "charge.completed") {
     return NextResponse.json({ received: true });
   }
 
