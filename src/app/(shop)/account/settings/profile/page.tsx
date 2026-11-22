@@ -27,7 +27,7 @@ async function Body() {
     <>
       <Panel>
         <h2 className="text-[15px] font-bold">Profile</h2>
-        <ProfileForm name={me.name} phone={me.phone?.replace(/^\+234/, "0") ?? ""} email={me.email ?? ""} />
+        <ProfileForm name={me.name} phone={me.phone?.replace(/^\+234/, "0") ?? ""} email={me.email ?? ""} avatarUrl={me.avatarUrl} />
       </Panel>
       <Panel>
         <h2 className="text-[15px] font-bold">Password</h2>
