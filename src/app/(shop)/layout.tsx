@@ -18,7 +18,7 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
         <a href="#main" className="sr-only z-[80] bg-ink px-4 py-3 font-bold text-white focus:not-sr-only focus:fixed focus:left-2 focus:top-2">Skip to content</a>
         <ThemeSync />
         <ShopHeader />
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1360px] text-[13px] outline-none md:px-6">{children}</main>
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1360px] bg-[#f3f4f6] text-[13px] outline-none md:px-6">{children}</main>
         <ShopFooter />
         <TabBar />
         <OfflineBanner />
