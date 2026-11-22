@@ -35,7 +35,7 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
-  const requestId = useRef(0);
+  const requestId = useRef(0);\n  const busy = useRef(false);
   const term = q.trim();
 
   const loadPage = useCallback(async (searchTerm: string, cursor: string | null, reset = false) => {
