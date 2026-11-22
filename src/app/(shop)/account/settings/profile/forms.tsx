@@ -34,7 +34,7 @@ export function ProfileForm({ name, phone, email, avatarUrl }: { name: string; p
     setAvatarBusy(true);
     try {
       const ext = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
-      const path = `${(await browserDb().auth.getUser()).data.user?.id}/avatar.${ext}`;
+      const path = `${(await browserDb().auth.getUser()).data.user?.id}/avatar-${Date.now().toString(36)}.${ext}`;
       if (path.startsWith("undefined/")) throw new Error("Sign in again to upload a photo.");
       const { error } = await browserDb().storage.from("avatars").upload(path, file, {
         upsert: true,
