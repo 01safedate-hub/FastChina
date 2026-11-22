@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   if (q.length < 2) {
     return NextResponse.json({ products: [], nextCursor: null }, { headers: { "Cache-Control": "no-store" } });
   }
-  if (cursor !== null && !/^\\d+$/.test(cursor)) {
+  if (cursor !== null && !/^\d+$/.test(cursor)) {
     return NextResponse.json({ error: "Invalid search cursor" }, { status: 400 });
   }
 
