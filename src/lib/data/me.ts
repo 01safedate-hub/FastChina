@@ -60,7 +60,7 @@ export const getCustomerIdentity = cache(async (): Promise<CustomerIdentity | nu
     typeof avatarPath === "string" &&
     avatarPath.startsWith(`${user.id}/avatar-`) &&
     !avatarPath.slice(user.id.length + 1).includes("/") &&
-    /\\.(jpg|png|webp)$/i.test(avatarPath)
+    /\.(jpg|png|webp)$/i.test(avatarPath)
   ) {
     avatarUrl = db.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl;
   }
