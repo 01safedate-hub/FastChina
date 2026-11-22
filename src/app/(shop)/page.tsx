@@ -129,7 +129,7 @@ export default async function HomePage() {
         <RetailerTile />
       </div>
 
-      <ProductFeed products={feed.products} nextCursor={feed.nextCursor} underFiveK={underFiveK} fiveToTenK={fiveToTenK} collections={feedCollections} />
+      <ProductFeed products={feed.products} nextCursor={feed.nextCursor} collections={feedCollections} />
 
       <div className="px-3 md:px-0">
         <TrustGrid />
