@@ -227,6 +227,60 @@ export async function getProductFeedPage(cursor?: string | null, pageSize = 12):
   };
 }
 
+/**
+ * Cursor-paginated related catalogue for product pages. The current product is
+ * excluded on every page and sale_count + slug keeps pagination deterministic.
+ */
+export async function getRelatedProductsPage(
+  currentSlug: string,
+  cursor?: string | null,
+  pageSize = 12,
+): Promise<ProductFeedPage> {
+  const size = Math.min(24, Math.max(1, Math.floor(pageSize)));
+  const parsed = cursor ? /^(\\d+):([a-z0-9-]+)$/.exec(cursor) : null;
+  if (cursor && !parsed) throw new Error("Invalid related catalogue cursor");
+
+  if (!hasSupabase) {
+    const all = SAMPLE_PRODUCTS.map(sampleToProduct)
+      .filter((product) => product.slug !== currentSlug)
+      .sort((a, b) => b.sold - a.sold || a.slug.localeCompare(b.slug));
+    const remaining = parsed
+      ? all.filter((product) => product.sold < Number(parsed[1]) || (product.sold === Number(parsed[1]) && product.slug > parsed[2]))
+      : all;
+    const page = remaining.slice(0, size + 1);
+    const hasMore = page.length > size;
+    const products = page.slice(0, size);
+    const last = products[products.length - 1];
+    return { products, nextCursor: hasMore && last ? `${last.sold}:${last.slug}` : null };
+  }
+
+  let query = publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .neq("slug", currentSlug)
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(size + 1);
+
+  if (parsed) {
+    const sold = Number(parsed[1]);
+    const slug = parsed[2];
+    query = query.or(`sale_count.lt.${sold},and(sale_count.eq.${sold},slug.gt.${slug})`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(`Related catalogue: ${error.message}`);
+  const rows = (data ?? []) as unknown as Row[];
+  const hasMore = rows.length > size;
+  const products = rows.slice(0, size).map(rowToProduct).filter((product): product is Product => product !== null);
+  const last = rows[Math.min(size, rows.length) - 1];
+  return {
+    products,
+    nextCursor: hasMore && last ? `${last.sale_count}:${last.slug}` : null,
+  };
+}
+
 export async function getProduct(slug: string): Promise<Product | null> {
   "use cache";
   cacheLife("minutes");
