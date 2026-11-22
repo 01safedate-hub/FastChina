@@ -69,20 +69,14 @@ export function ProductFeed({
   collections: { title: string; products: Product[] }[];
 }) {
   const [tab, setTab] = useState<Tab>("For You");
-  const [shuffledCollections, setShuffledCollections] = useState(collections);
+  const [shuffledCollections] = useState(() => collections.map((collection) => ({
+    ...collection,
+    products: shuffleProducts(collection.products),
+  })));
   const [products, setProducts] = useState(initialProducts);
   const [cursor, setCursor] = useState(initialCursor);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    // Keep each collection's eligibility rules, but rotate the display order on
-    // every homepage load so visitors see a fresh mix without cross-collection repeats.
-    setShuffledCollections(collections.map((collection) => ({
-      ...collection,
-      products: shuffleProducts(collection.products),
-    })));
-  }, [collections]);
-
   const end = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
   const hasMore = cursor !== null;
