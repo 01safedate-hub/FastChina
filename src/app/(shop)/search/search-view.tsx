@@ -73,6 +73,7 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
   const [q, setQ] = useState(params.get("q") ?? "");
   const [recent, setRecent] = useState<string[]>([]);
   const [discoveryWindow, setDiscoveryWindow] = useState(0);
+  const [discoveryPage, setDiscoveryPage] = useState(0);
   const [sort, setSort] = useState<(typeof SORTS)[number]>("Relevance");
   const [products, setProducts] = useState<Product[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -85,6 +86,12 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
   const term = q.trim();
 
   const discoveryItems = shuffleForWindow(DISCOVER, discoveryWindow);
+  const DISCOVERY_PAGE_SIZE = 8;
+  const discoveryPageCount = Math.ceil(discoveryItems.length / DISCOVERY_PAGE_SIZE);
+  const visibleDiscoveryItems = discoveryItems.slice(
+    discoveryPage * DISCOVERY_PAGE_SIZE,
+    (discoveryPage + 1) * DISCOVERY_PAGE_SIZE,
+  );
 
   useEffect(() => {
     try {
@@ -99,6 +106,10 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
       // Search still works when browser storage is unavailable.
     }
   }, []);
+
+  useEffect(() => {
+    setDiscoveryPage(0);
+  }, [discoveryWindow]);
 
   useEffect(() => {
     const updateWindow = () => setDiscoveryWindow(Math.floor(Date.now() / DISCOVERY_REFRESH_MS));
@@ -234,7 +245,8 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
             )}
             <section className="flex flex-col gap-2.5">
               <h2 className="text-base font-extrabold">Search discovery</h2>
-              <div className="flex flex-wrap gap-2">{discoveryItems.map((item) => <button key={item} type="button" onClick={() => go(item)} className="min-h-[38px] rounded-full border border-black/15 bg-white px-3.5 text-sm text-[#333] transition-colors hover:border-ink hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">{item}</button>)}</div>
+              <div className="flex flex-wrap gap-2">{visibleDiscoveryItems.map((item) => <button key={item} type="button" onClick={() => go(item)} className="min-h-[38px] rounded-full border border-black/15 bg-white px-3.5 text-sm text-[#333] transition-colors hover:border-ink hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">{item}</button>)}</div>
+              <button type="button" onClick={() => setDiscoveryPage((page) => (page + 1) % discoveryPageCount)} className="self-start rounded-full border border-black/15 bg-white px-3.5 py-2 text-xs font-semibold text-[#333] transition-colors hover:border-ink hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">More suggestions <span aria-hidden>→</span></button>
             </section>
           </div>
           <section className="flex flex-col gap-2.5">
