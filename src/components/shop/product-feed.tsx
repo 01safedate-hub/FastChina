@@ -31,13 +31,22 @@ const filter = (tab: Tab, list: Product[]) => {
   }
 };
 
+function shuffleProducts(items: Product[]): Product[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 function PriceCarousel({ title, products }: { title: string; products: Product[] }) {
   if (!products.length) return null;
   return (
     <section aria-label={title} className="flex flex-col gap-2 px-2 md:px-0">
       <div className="flex items-baseline justify-between">
         <h2 className="text-[15px] font-extrabold md:text-lg">{title}</h2>
-        <span className="text-[11px] text-muted">Lowest price first</span>
+        <span className="text-[11px] text-muted">Explore picks</span>
       </div>
       <div className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
         {products.map((product) => (
@@ -62,10 +71,17 @@ export function ProductFeed({
   fiveToTenK: Product[];
 }) {
   const [tab, setTab] = useState<Tab>("For You");
+  const [shuffledUnderFiveK, setShuffledUnderFiveK] = useState(underFiveK);
+  const [shuffledFiveToTenK, setShuffledFiveToTenK] = useState(fiveToTenK);
   const [products, setProducts] = useState(initialProducts);
   const [cursor, setCursor] = useState(initialCursor);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setShuffledUnderFiveK(shuffleProducts(underFiveK));
+    setShuffledFiveToTenK(shuffleProducts(fiveToTenK));
+  }, [underFiveK, fiveToTenK]);
+
   const end = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
   const hasMore = cursor !== null;
@@ -116,8 +132,8 @@ export function ProductFeed({
 
   return (
     <section aria-label="Products" className="flex flex-col gap-4">
-      <PriceCarousel title="Under ₦5,000" products={underFiveK} />
-      <PriceCarousel title="Under ₦10,000" products={fiveToTenK} />
+      <PriceCarousel title="Under ₦5,000" products={shuffledUnderFiveK} />
+      <PriceCarousel title="Under ₦10,000" products={shuffledFiveToTenK} />
       <div className="flex flex-col gap-2">
         <div className="no-scrollbar sticky top-[69px] z-10 flex items-center gap-0.5 overflow-x-auto bg-white px-2 md:static md:px-0">
           {TABS.map((t) => (
