@@ -35,7 +35,7 @@ export default async function HomePage() {
   const [products, feed] = await Promise.all([getHomeProducts(), getProductFeedPage()]);
   const byLowestPrice = [...products].sort((a, b) => a.prices.list - b.prices.list || a.name.localeCompare(b.name));
   const underFiveK = byLowestPrice.filter((product) => product.prices.list < 5_000).slice(0, 12);
-  const underTenK = byLowestPrice.filter((product) => product.prices.list < 10_000).slice(0, 12);
+  const fiveToTenK = byLowestPrice.filter((product) => product.prices.list >= 5_000 && product.prices.list < 10_000).slice(0, 12);
   const photos = imageMap(products, BUBBLE_PHOTOS);
   const heroPhotos = imageMap(products, {
     gadgets: { category: ["gadgets", "audio"] }, women: { category: ["fashion", "bags", "beauty"], name: "women" },
@@ -115,7 +115,7 @@ export default async function HomePage() {
         <RetailerTile />
       </div>
 
-      <ProductFeed products={feed.products} nextCursor={feed.nextCursor} underFiveK={underFiveK} underTenK={underTenK} />
+      <ProductFeed products={feed.products} nextCursor={feed.nextCursor} underFiveK={underFiveK} fiveToTenK={fiveToTenK} />
 
       <div className="px-3 md:px-0">
         <TrustGrid />
