@@ -4,7 +4,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { EndlessFeed } from "@/components/shop/endless-feed";
 import { ReviewsSection } from "@/components/shop/reviews-section";
 import { CATEGORY_PAGES } from "@/lib/content/category-pages";
-import { getProduct, getRelatedProducts, getProductSlugs, getQuestions, getReviews } from "@/lib/data/catalog";
+import { getProduct, getRelatedProductsPage, getProductSlugs, getQuestions, getReviews } from "@/lib/data/catalog";
 import { naira } from "@/lib/format";
 import { breadcrumbs, graph, returnPolicy, SHOP_URL, shippingDetails, snippet } from "@/lib/seo";
 import { ProductView } from "./product-view";
@@ -37,10 +37,8 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   const product = await getProduct(slug);
   if (!product) notFound();
   const [qa, reviews] = await Promise.all([getQuestions(slug), getReviews(slug)]);
-  // Related first, then everything else by popularity: the page keeps showing products as you scroll.
-  const all = await getRelatedProducts(slug);
-  const near = all.filter((p) => p.category === product.category);
-  const related = [...near, ...all.filter((p) => p.category !== product.category).sort((a, b) => b.sold - a.sold)].slice(0, 120);
+  // Load only the first related-products page during SSR; EndlessFeed fetches more as needed.
+  const relatedPage = await getRelatedProductsPage(slug);
 
   // Product details for search engines (Google merchant listings and product snippets).
   const url = `${SHOP_URL}/product/${slug}`;
@@ -84,7 +82,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
       <div className="px-0 pt-2 md:pt-4">
         <ReviewsSection reviews={reviews} rating={product.rating} count={product.reviews} />
       </div>
-      <EndlessFeed products={related} />
+      <EndlessFeed currentSlug={slug} products={relatedPage.products} nextCursor={relatedPage.nextCursor} />
     </>
   );
 }
