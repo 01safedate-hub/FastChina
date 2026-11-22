@@ -14,6 +14,25 @@ const SORTS = ["Relevance", "Best selling", "Price ↑", "Price ↓", "Air only"
 
 type SearchPage = { products: Product[]; nextCursor: string | null };
 
+function HotListImage({ product }: { product: Product }) {
+  const [failed, setFailed] = useState(false);
+  const image = product.images.find((url) => Boolean(url));
+  if (!image || failed) {
+    return <ProductIcon icon={product.icon} size={44} />;
+  }
+  return (
+    <img
+      src={image}
+      alt={product.name}
+      loading="eager"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      className="absolute inset-0 h-full w-full object-contain"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function sortResults(matches: Product[], sort: (typeof SORTS)[number]) {
   let res = matches;
   if (sort === "Best selling") res = [...res].sort((a, b) => b.sold - a.sold);
@@ -165,21 +184,7 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
               {hotProducts.map((product, index) => (
                 <button key={product.slug} type="button" onClick={() => go(product.name)} className="flex min-w-0 flex-col overflow-hidden rounded-md bg-[#fafafa]">
                   <span className="relative flex h-[112px] w-full shrink-0 items-center justify-center md:h-36" style={{ background: product.tint }}>
-                    {product.images[0] ? (
-                      <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        loading="eager"
-                        decoding="async"
-                        referrerPolicy="no-referrer"
-                        className="absolute inset-0 h-full w-full object-contain"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <ProductIcon icon={product.icon} size={44} />
-                    )}
+                    <HotListImage product={product} />
                     <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-sm bg-[#FFF6DA] px-2 py-0.5 text-[11px] font-extrabold text-gold-ink">TOP {index + 1}</span>
                   </span>
                   <span className="hot-list-title h-[2.75rem] overflow-hidden p-1.5 text-center text-[11px] leading-[1.25rem] text-gold-ink">{product.name}</span>
