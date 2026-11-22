@@ -45,6 +45,45 @@ export async function proxy(request: NextRequest) {
   const host = (request.headers.get("host") ?? "").split(":")[0].toLowerCase();
   const { pathname } = request.nextUrl;
 
+  // Cache Components streams dynamic product routes. A notFound() thrown after
+  // streaming starts can render the not-found UI with HTTP 200, so validate
+  // product slugs here before the route begins rendering.
+  const productMatch = /^\\/product\\/([^/]+)\\/?$/.exec(pathname);
+  const isMarketplaceHost = MAIN_HOSTS.includes(host) || isInfraHost(host);
+  if (productMatch && isMarketplaceHost) {
+    const slug = productMatch[1];
+    const missingProduct = () => new NextResponse(
+      "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"robots\" content=\"noindex\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Page not found — FastChina</title></head><body style=\"margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font-family:Arial,sans-serif;text-align:center;color:#171717\"><main><strong style=\"font-size:22px;letter-spacing:2px\">FASTCHINA</strong><h1 style=\"font-size:20px\">We couldn’t find that product</h1><p style=\"color:#666\">It may have sold out or moved. Search for it, or return to FastChina.</p><a href=\"/search\" style=\"display:inline-block;margin-top:12px;padding:13px 20px;background:#171717;color:white;text-decoration:none;font-weight:bold\">SEARCH FASTCHINA</a></main></body></html>",
+      { status: 404, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" } },
+    );
+
+    // Reject malformed slugs without making a database request.
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return missingProduct();
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    if (supabaseUrl && publishableKey) {
+      try {
+        const lookup = new URL("/rest/v1/products", supabaseUrl);
+        lookup.searchParams.set("select", "slug");
+        lookup.searchParams.set("slug", `eq.${slug}`);
+        lookup.searchParams.set("status", "in.(active,sold_out)");
+        lookup.searchParams.set("limit", "1");
+        const result = await fetch(lookup, {
+          headers: { apikey: publishableKey, Authorization: `Bearer ${publishableKey}` },
+          cache: "no-store",
+        });
+        if (result.ok) {
+          const products = await result.json() as { slug: string }[];
+          if (!products.some((product) => product.slug === slug)) return missingProduct();
+        }
+      } catch {
+        // Fail open during a temporary Supabase outage; the page still performs
+        // its own notFound() check and can show the branded not-found UI.
+      }
+    }
+  }
+
   const rewrite = (to: string) => {
     const url = request.nextUrl.clone();
     url.pathname = to;
