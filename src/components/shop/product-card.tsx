@@ -35,7 +35,7 @@ export function ProductTile({ tint, icon, name, image, badge, className = "", ic
   return (
     <span className={`relative flex items-center justify-center overflow-hidden rounded ${className}`} style={{ background: tint }}>
       {image ? (
-        <SafeImage src={image} alt={name} fill sizes={sizes} priority={priority} className="object-cover" fallback={<ProductIcon icon={icon} size={iconSize} />} />
+        <SafeImage src={image} alt={name} fill sizes={sizes} priority={priority} className="object-contain p-2" fallback={<ProductIcon icon={icon} size={iconSize} />} />
       ) : (
         <ProductIcon icon={icon} size={iconSize} />
       )}
@@ -50,10 +50,10 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="relative flex min-w-0 flex-col">
       <Link href={`/product/${product.slug}`} className="flex flex-col gap-1">
         <span className="relative">
-          <ProductTile tint={product.tint} icon={product.icon} name={product.name} image={product.images[0]} badge={product.badge} className="aspect-[3/4] w-full" />
+          <ProductTile tint={product.tint} icon={product.icon} name={product.name} image={product.images[0]} badge={product.badge} className="aspect-square w-full bg-white" />
           <ShipTag sea={product.shipMode === "sea"} className="absolute bottom-2 left-1.5" />
         </span>
-        <span className="mt-0.5 truncate text-xs text-[#333] md:text-[13px]">
+        <span className="mt-0.5 line-clamp-2 min-h-[2.5rem] text-xs leading-5 text-[#333] md:text-[13px]">
           {product.customisable && <span className="mr-1 rounded-sm bg-[#FFF1D6] px-1 py-px text-[9px] font-extrabold text-[#8A5A00]">CUSTOM</span>}
           {product.name}
         </span>
@@ -65,7 +65,7 @@ export function ProductCard({ product }: { product: Product }) {
         </span>
       </Link>
       {/* Same shape as the photo, so the buttons sit on its corners whatever the card width. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 aspect-[3/4] [&>*]:pointer-events-auto">
+      <div className="pointer-events-none absolute inset-x-0 top-0 aspect-square [&>*]:pointer-events-auto">
         <WishlistButton slug={product.slug} className="absolute right-1.5 top-1.5" />
         <AddToCartIcon product={product} variant={single} className="absolute bottom-1.5 right-1.5" />
       </div>
