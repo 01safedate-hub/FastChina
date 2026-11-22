@@ -261,18 +261,20 @@ export async function getWholesaleProductSlugs(): Promise<string[]> {
       .map((p) => p.slug);
   }
 
+  // Static generation needs only a small set of candidate paths. Avoid joining
+  // categories and product_skus here: those relations can make build-time queries
+  // exceed Supabase's statement timeout on a large catalogue.
   const { data, error } = await publicDb()
     .from("products")
-    .select("slug, wholesale, categories(wholesale_enabled), product_skus(active, price_wholesale)")
+    .select("slug")
+    .eq("wholesale", true)
     .in("status", ["active", "sold_out"])
+    .order("sale_count", { ascending: false })
     .order("slug", { ascending: true })
-    .limit(500);
+    .limit(24);
 
   if (error) throw new Error(`Wholesale product slugs: ${error.message}`);
-  return (data ?? [])
-    .filter((row) => row.wholesale !== false && row.categories?.[0]?.wholesale_enabled !== false)
-    .filter((row) => row.product_skus?.some((sku) => sku.active && Number(sku.price_wholesale) > 0))
-    .map((row) => row.slug);
+  return (data ?? []).map((row) => row.slug);
 }
 
 export interface LineRequest {
