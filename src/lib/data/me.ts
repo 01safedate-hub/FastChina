@@ -1,4 +1,5 @@
 import type { ItemCustom } from "@/app/(shop)/account/orders/custom-artwork";
+import { cache } from "react";
 import "server-only";
 import { getSessionUser, userDb } from "@/lib/supabase/auth";
 import { hasSupabase } from "@/lib/supabase/env";
@@ -38,7 +39,7 @@ export interface Me {
 }
 
 /** Everything the profile screen shows, read as the customer (row level security returns only their own rows). */
-export async function getMe(): Promise<Me | null> {
+export const getMe = cache(async (): Promise<Me | null> => {
   if (!hasSupabase) return null;
   const user = await getSessionUser();
   if (!user) return null;
@@ -93,4 +94,4 @@ export async function getMe(): Promise<Me | null> {
     counts,
     orders: list,
   };
-}
+});
