@@ -395,11 +395,16 @@ export function CheckoutView() {
                 if (!call.ok) return setPlaceMsg(call.message);
                 const r = call.value;
                 if (!r.ok) return setPlaceMsg(r.message);
+                const payment = await startOrderPayment({
+                  code: r.code, phone, email, provider: method,
+                  amountNgn: mode === "full" ? due : weekly,
+                });
+                if (!payment.ok) return setPlaceMsg(payment.message);
                 try {
-                  sessionStorage.setItem(`fc-track-${r.code}`, phone.replace(/\D/g, "").slice(-4));
+                  sessionStorage.setItem(`fc-track-${r.code}`, phone.replace(/\\D/g, "").slice(-4));
                 } catch {}
                 for (const i of selected) remove(i.key);
-                router.push(`/track?code=${r.code}`);
+                window.location.assign(payment.checkoutUrl);
               })
             }
             className="min-h-[50px] bg-sale text-[15px] font-extrabold text-white disabled:opacity-60"
