@@ -215,10 +215,7 @@ export async function getProduct(slug: string): Promise<Product | null> {
 export async function getProductSlugs(): Promise<string[]> {
   if (!hasSupabase) return SAMPLE_PRODUCTS.map((p) => p.slug);
 
-  // Static generation only needs a small set of representative product routes.
-  // Fetching the full product + SKU + category graph here made Netlify build-time
-  // page-data collection time out as the catalogue grew. Other product routes
-  // are rendered on demand by Next.js.
+  // Static generation only needs representative routes, not the full catalogue graph.
   const { data, error } = await publicDb()
     .from("products")
     .select("slug")
@@ -229,6 +226,28 @@ export async function getProductSlugs(): Promise<string[]> {
 
   if (error) throw new Error(`Product slugs: ${error.message}`);
   return (data ?? []).map((row) => row.slug);
+}
+
+/** Wholesale route params need only slug and wholesale eligibility, not full product details. */
+export async function getWholesaleProductSlugs(): Promise<string[]> {
+  if (!hasSupabase) {
+    return SAMPLE_PRODUCTS.map(sampleToProduct)
+      .filter((p) => p.wholesale && p.wholesaleFrom > 0 && Number.isFinite(p.wholesaleFrom))
+      .map((p) => p.slug);
+  }
+
+  const { data, error } = await publicDb()
+    .from("products")
+    .select("slug, wholesale, categories(wholesale_enabled), product_skus(active, price_wholesale)")
+    .in("status", ["active", "sold_out"])
+    .order("slug", { ascending: true })
+    .limit(500);
+
+  if (error) throw new Error(`Wholesale product slugs: ${error.message}`);
+  return (data ?? [])
+    .filter((row) => row.wholesale !== false && row.categories?.wholesale_enabled !== false)
+    .filter((row) => row.product_skus?.some((sku) => sku.active && Number(sku.price_wholesale) > 0))
+    .map((row) => row.slug);
 }
 
 export interface LineRequest {
