@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { InfoButton } from "@/components/ui/info-button";
 import type { Product } from "@/lib/catalog/types";
-import { cn, naira } from "@/lib/format";
+import { cn } from "@/lib/format";
 import { ProductCard } from "./product-card";
 import { PromoTile, SpotlightCarousel } from "./feed-promos";
 import { categoryRanks } from "./spotlight-card";
