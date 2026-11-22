@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       const { data: order } = await secretDb().from("orders").select("code").eq("id", payment.order_id).maybeSingle();
       if (order?.code) return NextResponse.redirect(new URL(`/track?code=${encodeURIComponent(order.code)}&payment=verified`, url.origin));
     }
-    return NextResponse.redirect(new URL("/store?payment=verified", url.origin));
+    return NextResponse.redirect(new URL("/store/seller/plan?payment=verified", url.origin));
   } catch {
     return NextResponse.redirect(new URL("/track?payment=pending", url.origin));
   }
