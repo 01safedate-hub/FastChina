@@ -121,7 +121,9 @@ export async function getHomeProducts(): Promise<Product[]> {
     .in("status", ["active", "sold_out"])
     .order("sale_count", { ascending: false })
     .order("slug", { ascending: true })
-    .limit(120);
+    // Homepage modules need a compact merchandising sample, not 120 full product
+    // records with every SKU relation. The main feed is loaded separately in pages.
+    .limit(24);
   if (error) throw new Error(`Homepage catalogue: ${error.message}`);
   return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
 }
@@ -164,7 +166,8 @@ export async function getRelatedProducts(slug: string): Promise<Product[]> {
     .neq("slug", slug)
     .order("sale_count", { ascending: false })
     .order("slug", { ascending: true })
-    .limit(120);
+    // Keep prerender work bounded; the product page only needs a small related strip.
+    .limit(12);
   if (error) throw new Error(`Related catalogue: ${error.message}`);
   return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
 }
