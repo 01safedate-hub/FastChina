@@ -25,7 +25,18 @@ export async function POST(request: Request) {
     reference, payload: event,
   }).select("id").maybeSingle();
 
-  if (inserted.error?.code === "23505") return NextResponse.json({ received: true, duplicate: true });
+  if (inserted.error?.code === "23505") {
+    const { data: prior } = await db.from("payment_webhook_events")
+      .select("id, processed_at").eq("provider", "paystack").eq("event_id", eventId).maybeSingle();
+    if (prior?.processed_at) return NextResponse.json({ received: true, duplicate: true });
+    try {
+      await fulfilVerifiedPayment("paystack", reference, eventId);
+      if (prior) await db.from("payment_webhook_events").update({ processed_at: new Date().toISOString(), processing_error: null }).eq("id", prior.id);
+      return NextResponse.json({ received: true, retried: true });
+    } catch {
+      return NextResponse.json({ error: "Payment verification failed" }, { status: 500 });
+    }
+  }
   if (inserted.error || !inserted.data) return NextResponse.json({ error: "Could not record event" }, { status: 500 });
 
   try {
