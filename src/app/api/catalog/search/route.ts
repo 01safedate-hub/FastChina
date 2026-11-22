@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSearchProductsPage } from "@/lib/data/catalog";
+import { getSearchProductsPage } from "@/lib/data/catalog";\nimport { allow } from "@/lib/rate-limit";
 
 const PAGE_SIZE = 24;
 
