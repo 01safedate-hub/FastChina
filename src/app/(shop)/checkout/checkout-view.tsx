@@ -60,6 +60,8 @@ export function CheckoutView() {
     apply(getStationId(), LISTED);
     myProfile().then((me) => {
       if (!live || !me) return;
+      // Prefill receipt email from the verified Supabase session; guests can still enter one.
+      if (me.email) setEmail((current) => current || me.email!);
       if (me.phone) setPhone((p) => p || me.phone!.replace(/^\+234/, "0"));
       if (me.station) {
         const s: Station = { ...me.station, hours: "", verified: me.station.verified };
