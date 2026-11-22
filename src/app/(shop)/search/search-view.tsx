@@ -35,7 +35,7 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
-  const requestId = useRef(0);\n  const busy = useRef(false);
+  const requestId = useRef(0);\n  const activeRequest = useRef<AbortController | null>(null);
   const term = q.trim();
 
   const loadPage = useCallback(async (searchTerm: string, cursor: string | null, reset = false) => {
@@ -46,7 +46,7 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
     try {
       const params = new URLSearchParams({ q: searchTerm });
       if (cursor) params.set("cursor", cursor);
-      const response = await fetch(`/api/catalog/search?${params.toString()}`, { cache: "no-store" });
+      const response = await fetch(`/api/catalog/search?${params.toString()}`, { cache: "no-store", signal: controller.signal });
       if (!response.ok) throw new Error("Search request failed");
       const page = (await response.json()) as SearchPage;
       if (id !== requestId.current) return;
