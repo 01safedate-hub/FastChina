@@ -383,7 +383,7 @@ export function CheckoutView() {
           {!placeMsg && online && quoteFailed && <p role="status" className="text-center text-xs font-semibold text-muted">Showing an estimate. We couldn’t confirm the final total yet; it updates when your connection settles.</p>}
           <button
             type="button"
-            disabled={placing || selected.length === 0 || !online || !serverQuote || mode === "group" || ((mode === "full" || mode === "small") && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.trim()))}
+            disabled={placing || selected.length === 0 || !online || !serverQuote || mode === "group" || ((mode === "full" || mode === "small") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))}
             onClick={() =>
               startPlacing(async () => {
                 setPlaceMsg(null);
@@ -400,7 +400,7 @@ export function CheckoutView() {
                 });
                 if (!payment.ok) return setPlaceMsg(payment.message);
                 try {
-                  sessionStorage.setItem(`fc-track-${r.code}`, phone.replace(/\\D/g, "").slice(-4));
+                  sessionStorage.setItem(`fc-track-${r.code}`, phone.replace(/\D/g, "").slice(-4));
                 } catch {}
                 for (const i of selected) remove(i.key);
                 window.location.assign(payment.checkoutUrl);
