@@ -13,7 +13,15 @@ export const metadata: Metadata = { title: "Settings", robots: { index: false } 
 export default function SettingsPage() {
   return (
     <SettingsShell title="Settings" back="/account">
-      <Suspense fallback={<div className="h-14 bg-white" />}>
+      <Suspense fallback={
+        <div className="flex min-h-[88px] items-center gap-3 bg-white px-4 py-3 md:rounded-2xl md:border md:border-line">
+          <div className="size-14 shrink-0 animate-pulse rounded-full bg-[#EDEDED]" />
+          <div className="flex flex-1 flex-col gap-2">
+            <div className="h-4 w-32 animate-pulse rounded bg-[#EDEDED]" />
+            <div className="h-3 w-44 max-w-full animate-pulse rounded bg-[#EDEDED]" />
+          </div>
+        </div>
+      }>
         <Account />
       </Suspense>
       <Group>
