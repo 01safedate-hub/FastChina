@@ -50,8 +50,8 @@ function PriceCarousel({ title, products }: { title: string; products: Product[]
       </div>
       <div className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
         {products.map((product) => (
-          <div key={product.slug} className="w-[42vw] shrink-0 snap-start sm:w-44 md:w-48">
-            <ProductCard product={product} />
+          <div key={product.slug} className="w-[36vw] shrink-0 snap-start sm:w-40 md:w-44">
+            <ProductCard product={product} compact />
           </div>
         ))}
       </div>
