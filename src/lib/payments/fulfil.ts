@@ -25,18 +25,20 @@ export async function fulfilVerifiedPayment(provider: PaymentProvider, reference
   let verifiedCurrency: string;
   let verifiedId: number;
 
-  if (provider === "paystack") {
+  if (provider === "paystack" && "reference" in verified) {
     isSuccessful = verified.status === "success";
     verifiedReference = verified.reference;
     verifiedAmount = verified.amount / 100;
     verifiedCurrency = verified.currency;
     verifiedId = verified.id;
-  } else {
+  } else if (provider === "flutterwave" && "tx_ref" in verified) {
     isSuccessful = verified.status === "successful";
     verifiedReference = verified.tx_ref;
     verifiedAmount = verified.amount;
     verifiedCurrency = verified.currency;
     verifiedId = verified.id;
+  } else {
+    throw new Error("Payment provider verification response is invalid");
   }
 
   if (!isSuccessful || verifiedReference !== reference || verifiedCurrency !== "NGN") {
