@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/json-ld";
 import { CATEGORY_KEYS } from "@/lib/content/category-pages";
-import { getKitRows, getProducts } from "@/lib/data/catalog";
+import { getHomeProducts, getKitRows } from "@/lib/data/catalog";
 import { breadcrumbs, graph, SHOP_URL } from "@/lib/seo";
 import type { CategoryKey } from "@/lib/pricing/engine";
 import { DEFAULT_KITS, type Kit, MIN_QTY as WMIN } from "@/lib/wholesale/rules";
@@ -42,7 +42,7 @@ export default function WholesalePage() {
 }
 
 async function Market() {
-  const [all, kitRows] = await Promise.all([getProducts(), getKitRows()]);
+  const [all, kitRows] = await Promise.all([getHomeProducts(), getKitRows()]);
   const products = all.filter((p) => p.wholesale && p.wholesaleFrom > 0 && Number.isFinite(p.wholesaleFrom));
   const present = new Set(products.map((p) => p.category));
   const categories = CATEGORY_KEYS.filter((k) => present.has(k));
