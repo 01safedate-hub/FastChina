@@ -4,9 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ProductCard } from "@/components/shop/product-card";
-import { ProductIcon } from "@/components/ui/product-icon";
-import { RotatingPhoto } from "@/components/shop/rotating-photo";
+import { ProductCard, ProductTile } from "@/components/shop/product-card";
 import type { Product } from "@/lib/catalog/types";
 import { cn } from "@/lib/format";
 
@@ -166,10 +164,18 @@ export function SearchView({ hotProducts }: { hotProducts: Product[] }) {
               {hotProducts.map((product, index) => (
                 <button key={product.slug} type="button" onClick={() => go(product.name)} className="flex flex-col overflow-hidden rounded-md bg-[#fafafa]">
                   <span className="relative flex h-[104px] w-full items-center justify-center md:h-36" style={{ background: product.tint }}>
-                    <RotatingPhoto images={product.images} offset={index} sizes="(min-width: 768px) 200px, 33vw" className="absolute inset-0" fallback={<ProductIcon icon={product.icon} size={44} className="text-ink/55" />} />
+                    <ProductTile
+                      tint={product.tint}
+                      icon={product.icon}
+                      name={product.name}
+                      image={product.images[0]}
+                      className="absolute inset-0"
+                      iconSize={44}
+                      sizes="(min-width: 768px) 200px, 33vw"
+                    />
                     <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-sm bg-[#FFF6DA] px-2 py-0.5 text-[11px] font-extrabold text-gold-ink">TOP {index + 1}</span>
                   </span>
-                  <span className="p-1.5 text-center text-[11px] leading-tight text-gold-ink">{product.name}</span>
+                  <span className="line-clamp-2 min-h-[2.5rem] p-1.5 text-center text-[11px] leading-tight text-gold-ink">{product.name}</span>
                 </button>
               ))}
             </div>
