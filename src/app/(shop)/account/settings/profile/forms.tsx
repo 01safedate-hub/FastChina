@@ -83,9 +83,9 @@ export function ProfileForm({ name, phone, email, avatarUrl }: { name: string; p
     >
       <div className="flex items-center gap-4 rounded-xl bg-surface p-3">
         {avatarUrl ? (
-          <img src={avatarUrl} alt="Your profile" className="size-16 shrink-0 rounded-full object-cover" />
+          <img src={avatarUrl} alt="Your profile" className="size-16 shrink-0 rounded-full border-2 border-ink object-cover" />
         ) : (
-          <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-ink text-xl font-extrabold text-white">{initial}</span>
+          <span className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-ink text-xl font-extrabold text-white">{initial}</span>
         )}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <strong className="text-[13px]">Profile photo</strong>
