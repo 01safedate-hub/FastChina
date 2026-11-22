@@ -1,5 +1,5 @@
 import { CartProvider } from "@/components/shop/cart-provider";
-import { ShopFooter } from "@/components/shop/footer";
+import { ShopFooterVisibility } from "@/components/shop/footer-visibility";
 import { ShopHeader } from "@/components/shop/header";
 import { SiteDataProvider } from "@/components/shop/site-data";
 import { TabBar } from "@/components/shop/tab-bar";
@@ -19,7 +19,7 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
         <ThemeSync />
         <ShopHeader />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1360px] text-[13px] outline-none md:px-6">{children}</main>
-        <ShopFooter />
+        <ShopFooterVisibility />
         <TabBar />
         <OfflineBanner />
         <WelcomeSheet />
