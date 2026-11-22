@@ -2,7 +2,7 @@
 
 import { ChevronDown, ChevronLeft, ChevronUp, Copy, Lock, MapPin, Plane } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { useCart } from "@/components/shop/cart-provider";
 import { useLivePromo } from "@/components/shop/live-price";
@@ -32,7 +32,6 @@ export function CheckoutView() {
   const initial = params.get("pay");
   const [mode, setMode] = useState<Mode>(initial === "small" || initial === "group" ? initial : "full");
   const { items, remove } = useCart();
-  const router = useRouter();
   const [phone, setPhone] = useState("");
   const [placing, startPlacing] = useTransition();
   const [placeMsg, setPlaceMsg] = useState<string | null>(null);
@@ -384,7 +383,7 @@ export function CheckoutView() {
           {!placeMsg && online && quoteFailed && <p role="status" className="text-center text-xs font-semibold text-muted">Showing an estimate. We couldn’t confirm the final total yet; it updates when your connection settles.</p>}
           <button
             type="button"
-            disabled={placing || selected.length === 0 || !online || !serverQuote || mode === "group" || (mode === "full" && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.trim()))}
+            disabled={placing || selected.length === 0 || !online || !serverQuote || mode === "group" || ((mode === "full" || mode === "small") && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.trim()))}
             onClick={() =>
               startPlacing(async () => {
                 setPlaceMsg(null);
