@@ -417,7 +417,7 @@ export async function getSearchProductsPage(q: string, offset = 0, pageSize = 24
   if (term.length < 2) return { products: [], nextCursor: null };
 
   if (!hasSupabase) {
-    const words = term.toLowerCase().split(/\\s+/).filter((word) => word.length > 1);
+    const words = term.toLowerCase().split(/\s+/).filter((word) => word.length > 1);
     const matches = SAMPLE_PRODUCTS.map(sampleToProduct).filter((p) =>
       words.some((word) => `${p.name} ${p.category} ${p.description}`.toLowerCase().includes(word.replace(/s$/, ""))),
     );
