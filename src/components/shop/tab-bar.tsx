@@ -32,7 +32,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="App navigation"
-      className="fixed inset-x-0 bottom-0 z-[90] grid grid-cols-5 border-t border-[#e5e5e5] bg-white text-[#555] shadow-[0_-5px_20px_rgba(0,0,0,0.08)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-[2147483647] grid grid-cols-5 border-t border-[#e5e5e5] bg-white text-[#555] shadow-[0_-5px_20px_rgba(0,0,0,0.08)] md:hidden"
       style={{ minHeight: "62px", paddingBottom: "max(6px, env(safe-area-inset-bottom))", paddingTop: "6px", pointerEvents: "auto" }}
     >
       {TABS.map(({ href, label, icon: Icon, match }) => {
