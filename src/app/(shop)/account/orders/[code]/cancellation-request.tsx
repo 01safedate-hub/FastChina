@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { requestOrderCancellation } from "../../actions";
+import { requestOrderCancellation } from "../../../actions";
 
 type RequestStatus = "pending" | "approved" | "rejected";
 
