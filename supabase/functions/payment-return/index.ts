@@ -12,8 +12,8 @@ try {
   }
 } catch { console.error("Invalid SITE_URL; using stable Netlify origin"); }
 const go = (path: string) => Response.redirect(new URL(path.startsWith("/") ? path : `/${path}`, siteOrigin), 302);
-async function confirmation(status: "success" | "pending" | "unverified", code?: string) {
-  const params = new URLSearchParams({ status });
+async function confirmation(status: "success" | "pending" | "unverified", code?: string, kind: "order" | "subscription" = "order") {
+  const params = new URLSearchParams({ status, kind });
   if (code) params.set("code", code);
   return go(`/payment/confirmation?${params.toString()}`);
 }
@@ -27,6 +27,7 @@ Deno.serve(async req => {
   try {
     const {data:p,error} = await db.from("payment_transactions").select("purpose,amount_ngn,order_id,status").eq("provider",provider).eq("reference",reference).maybeSingle();
     if (error || !p) return confirmation("unverified");
+    paymentKind = p.purpose === "seller_subscription" ? "subscription" : "order";
     if (p.purpose === "order" && p.order_id) {
       const {data:o} = await db.from("orders").select("code").eq("id",p.order_id).maybeSingle();
       orderCode = o?.code ?? undefined;
@@ -49,9 +50,9 @@ Deno.serve(async req => {
       const {error:re} = await db.rpc("record_verified_payment",{p_provider:provider,p_reference:reference,p_provider_transaction_id:String(v.id),p_amount_ngn:amount,p_currency:"NGN",p_payload:v});
       if (re) throw re;
     }
-    return confirmation("success", orderCode);
+    return confirmation("success", orderCode, paymentKind);
   } catch (error) {
     console.error("Payment return verification failed", {provider, reference, reason:error instanceof Error ? error.message : String(error)});
-    return confirmation("pending", orderCode);
+    return confirmation("pending", orderCode, paymentKind);
   }
 });
