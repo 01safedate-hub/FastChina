@@ -50,7 +50,7 @@ export function CancellationRequest({ code, request }: {
       ) : (
         <>
           <p className="mt-1 text-xs leading-relaxed text-muted">Under our <a href="/legal/terms" className="font-semibold underline">Terms</a>, you can request cancellation before FastChina buys the item from the factory. Our team checks the order stage before approving it. Submitting a request does not cancel the order immediately.</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted">If approved, the Refunds policy says paid amounts for signed-in customers are returned to the FastChina wallet straight away. See the <a href="/legal/refunds" className="font-semibold underline">Refunds policy</a>.
+          <p className="mt-1 text-xs leading-relaxed text-muted">If approved, the Refunds policy says paid amounts for signed-in customers are returned to the FastChina wallet straight away. See the <a href="/legal/refunds" className="font-semibold underline">Refunds policy</a>.</p>
           {!open ? (
             <button type="button" onClick={() => setOpen(true)} className="mt-3 min-h-10 rounded-full border border-ink px-4 text-xs font-bold">Request cancellation</button>
           ) : (
