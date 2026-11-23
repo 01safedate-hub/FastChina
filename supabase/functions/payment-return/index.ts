@@ -2,9 +2,15 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const projectUrl = Deno.env.get("SUPABASE_URL")!;
 const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const db = createClient(projectUrl,key,{auth:{persistSession:false,autoRefreshToken:false}});
-const configuredSite = Deno.env.get("SITE_URL") || "https://fastchina.shop";
-let siteOrigin = "https://fastchina.shop";
-try { siteOrigin = new URL(configuredSite).origin; } catch { console.error("Invalid SITE_URL; using canonical origin"); }
+const DEFAULT_SITE_URL = "https://stunning-youtiao-4a78bd.netlify.app";
+const configuredSite = Deno.env.get("SITE_URL")?.trim();
+let siteOrigin = DEFAULT_SITE_URL;
+try {
+  if (configuredSite) {
+    const candidate = new URL(configuredSite);
+    if (candidate.protocol === "https:" && !candidate.hostname.startsWith("deploy-preview")) siteOrigin = candidate.origin;
+  }
+} catch { console.error("Invalid SITE_URL; using stable Netlify origin"); }
 const go = (path: string) => Response.redirect(new URL(path.startsWith("/") ? path : `/${path}`, siteOrigin), 302);
 async function confirmation(status: "success" | "pending" | "unverified", code?: string) {
   const params = new URLSearchParams({ status });
