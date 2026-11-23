@@ -1,5 +1,5 @@
 import {
-  Bell, Box, ChevronRight, Headphones, MapPin, MessageSquareText, Package, Plane, RotateCcw, ScrollText, Settings, ShieldCheck, Star, Store, Wallet, Zap,
+  Bell, Box, ChevronRight, Headphones, MapPin, MessageSquareText, Package, Plane, RotateCcw, ScrollText, Settings, ShieldCheck, Star, Store, Users, Wallet, Zap,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -20,7 +20,7 @@ const ORDER_ICONS: Record<OrderGroup, typeof Wallet> = { unpaid: Wallet, process
 export default function AccountPage() {
   return (
     // Phones: one column. Desktop: the profile on the left (sticky), picks fill the rest.
-    <div className="flex w-full flex-col gap-2.5 bg-surface pb-8 md:bg-transparent md:pt-6 lg:grid lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start lg:gap-6">
+    <div className="flex w-full flex-col gap-2.5 bg-surface px-3 pb-8 md:bg-transparent md:px-0 md:pt-6 lg:grid lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start lg:gap-6">
       <div className="flex flex-col gap-2.5 lg:sticky lg:top-28">
         <Suspense fallback={
           <div className="flex items-center gap-3 bg-white px-4 py-4 md:rounded-2xl md:border md:border-line">
@@ -48,7 +48,7 @@ async function CustomerHeader() {
 
   if (!me) {
     return (
-      <section className="mx-2 flex flex-col gap-4 rounded-2xl bg-white p-5 md:mx-0 md:border md:border-line">
+      <section className="flex flex-col gap-4 rounded-2xl bg-white p-5 md:mx-0 md:border md:border-line">
         <div className="flex items-center gap-3">
           <span className="flex size-14 items-center justify-center rounded-full bg-surface text-xl font-extrabold text-muted">?</span>
           <span className="flex flex-col">
@@ -93,7 +93,7 @@ async function CustomerHeader() {
 function Profile() {
   return (
     <>
-      <section className="mx-2 overflow-hidden rounded-2xl bg-white md:mx-0 md:border md:border-line">
+      <section className="overflow-hidden rounded-2xl bg-white md:mx-0 md:border md:border-line">
         <Suspense fallback={<AccountStatsFallback />}>
           <AccountStats />
         </Suspense>
@@ -108,20 +108,17 @@ function Profile() {
         </Suspense>
       </section>
 
-      <section className="mx-2 flex flex-col gap-3 rounded-2xl bg-white p-4 md:mx-0 md:border md:border-line">
+      <section className="flex flex-col gap-3 rounded-2xl bg-white p-4 md:mx-0 md:border md:border-line">
         <div className="flex items-center justify-between">
           <h2 className="text-[15px] font-extrabold">My orders</h2>
-          <div className="flex items-center gap-3">
-            <Link href="/account/group-orders" className="text-[13px] font-bold text-group">Group Pay ›</Link>
-            <Link href="/account/orders" className="text-[13px] text-muted">View all ›</Link>
-          </div>
+          <Link href="/account/orders" className="text-[13px] text-muted">View all ›</Link>
         </div>
         <Suspense fallback={<OrderDetailsFallback />}>
           <OrderDetails />
         </Suspense>
       </section>
 
-      <section className="mx-2 grid grid-cols-4 gap-y-4 rounded-2xl bg-white p-4 text-center md:mx-0 md:border md:border-line">
+      <section className="grid grid-cols-4 gap-y-4 rounded-2xl bg-white p-4 text-center md:mx-0 md:border md:border-line">
         {[
           [Zap, "Deals", "/deals"],
           [Headphones, "Customer service", "/account/settings/contact"],
@@ -130,6 +127,7 @@ function Profile() {
           [ScrollText, "Policy", "/legal/terms"],
           [Store, "Open a store", "/store"],
           [Package, "Wholesale", "/wholesale"],
+          [Users, "Group Pay", "/account/group-orders"],
         ].map(([Icon, label, href]) => {
           const I = Icon as typeof Wallet;
           return (
@@ -142,7 +140,7 @@ function Profile() {
         <Suspense fallback={null}><AdminShortcut /></Suspense>
       </section>
 
-      <div className="mx-2 md:mx-0">
+      <div className="md:mx-0">
         <CheckInButton />
       </div>
     </>
@@ -260,7 +258,7 @@ async function AdminShortcut() {
 
 function PicksFallback() {
   return (
-    <section aria-labelledby="picks-h" className="flex min-h-[420px] flex-col gap-2 px-2 pt-2 md:px-0 lg:pt-0">
+    <section aria-labelledby="picks-h" className="flex min-h-[420px] flex-col gap-2 pt-2 lg:pt-0">
       <h2 id="picks-h" className="text-[15px] font-extrabold">Picked for you</h2>
       <div className="grid grid-cols-2 gap-x-1.5 gap-y-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
         {Array.from({ length: 12 }, (_, index) => (
