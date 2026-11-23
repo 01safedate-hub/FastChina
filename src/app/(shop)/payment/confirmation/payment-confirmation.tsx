@@ -1,11 +1,11 @@
 "use client";
 
-import { CheckCircle2, Clock3, CircleAlert, PackageSearch } from "lucide-react";
+import { CheckCircle2, Clock3, CircleAlert, LoaderCircle, PackageSearch } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { attempt } from "@/lib/net";
-import { trackOrder, type TrackedOrder } from "../../actions";
+import { getOrderPaymentDestination, trackOrder, type TrackedOrder } from "../../actions";
 import { useCart } from "@/components/shop/cart-provider";
 
 type PaymentState = "checking" | "pending" | "partial" | "paid" | "not-found" | "error";
@@ -78,7 +78,7 @@ export function PaymentConfirmation() {
   const paid = state === "paid";
   const partial = state === "partial";
   const pending = state === "checking" || state === "pending";
-  const Icon = paid ? CheckCircle2 : pending ? Clock3 : state === "not-found" || state === "error" ? CircleAlert : CheckCircle2;
+  const Icon = paid ? CheckCircle2 : pending ? Clock3 : state === "not-found" || state === "error" ? CircleAlert : CheckCircle2;\n  const orderTab = paid ? "processing" : state === "error" ? "all" : "unpaid";\n  const orderHref = `/account/orders?tab=${orderTab}`;
   const heading = paid
     ? "Payment confirmed"
     : partial
@@ -128,7 +128,7 @@ export function PaymentConfirmation() {
           : <Link href={`/track?code=${encodeURIComponent(code)}`} className="flex min-h-12 flex-1 items-center justify-center rounded-md bg-ink px-4 font-bold text-white">Check order</Link>}
         <Link href="/" className="flex min-h-12 flex-1 items-center justify-center rounded-md border border-line bg-white px-4 font-bold">Continue shopping</Link>
       </div>
-      {!phoneLast4 && <p className="text-xs text-muted">Your checkout phone verification details were not available in this browser.</p>}
+      {!phoneLast4 && state !== "checking" && <p className="text-xs text-muted">Order status was checked securely. You can view its current payment category in your account.</p>}
     </div>
   );
 }
