@@ -68,7 +68,7 @@ export function LiveLink({ code, initial }: { code: string; initial: LinkProgres
             <div className="grid grid-cols-2 gap-2">{(["paystack", "flutterwave"] as const).map((v) => <button key={v} type="button" aria-pressed={provider === v} onClick={() => setProvider(v)} className={`min-h-10 rounded-md border text-sm capitalize ${provider === v ? "border-ink font-bold" : "border-line"}`}>{v}</button>)}</div>
           </div>
           {message && <p role="alert" className="text-xs text-sale">{message}</p>}
-          <button type="submit" disabled={busy || !validAmount || !/^\\S+@\\S+\\.\\S+$/.test(email.trim()) || !name.trim()} className="min-h-12 rounded-md bg-group text-sm font-extrabold text-white disabled:opacity-50">{busy ? "OPENING SECURE CHECKOUT…" : `CHIP IN · ${naira(Number(amount) || 0)}`}</button>
+          <button type="submit" disabled={busy || !validAmount || !name.trim()} className="min-h-12 rounded-md bg-group text-sm font-extrabold text-white disabled:opacity-50">{busy ? "OPENING SECURE CHECKOUT…" : `CHIP IN · ${naira(Number(amount) || 0)}`}</button>
           <p className="text-center text-xs text-muted">Secure payment through {provider === "paystack" ? "Paystack" : "Flutterwave"}.</p>
         </form>
       )}
