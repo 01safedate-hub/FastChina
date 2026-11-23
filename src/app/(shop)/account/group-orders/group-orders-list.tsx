@@ -53,7 +53,7 @@ export function GroupOrdersList({ orders }: { orders: GroupOrder[] }) {
   };
 
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="flex flex-col gap-3 px-3">
       {items.map((item) => {
         const remaining = Math.max(0, item.target - item.raised);
         const expired = new Date(item.expires_at).getTime() <= Date.now() && remaining > 0;
