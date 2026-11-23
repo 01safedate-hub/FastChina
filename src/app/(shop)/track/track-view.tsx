@@ -10,12 +10,14 @@ import { AUTO_DELIVER_DAYS, trackingStep } from "@/lib/orders/lifecycle";
 import { progressPct } from "@/lib/payments/instalments";
 import { type TrackedOrder, trackOrder } from "../actions";
 import { attempt } from "@/lib/net";
+import { useCart } from "@/components/shop/cart-provider";
 
 const STEPS = ["Payment", "Ordering", "China warehouse", "On the way", "At your station"];
 const day = (iso: string | number) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Africa/Lagos" });
 
 export function TrackView() {
   const params = useSearchParams();
+  const { remove } = useCart();
   const [code, setCode] = useState(params.get("code") ?? "");
   const [last4, setLast4] = useState("");
   const [order, setOrder] = useState<TrackedOrder | null>(null);
@@ -47,6 +49,22 @@ export function TrackView() {
     if (saved) look(c, saved);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A successful provider return is verified server-side before this page is reached.
+  // Only then remove the items associated with the paid order from the persistent cart.
+  useEffect(() => {
+    if (params.get("payment") !== "verified") return;
+    const c = params.get("code");
+    if (!c) return;
+    try {
+      const raw = sessionStorage.getItem(`fc-pending-cart-${c}`);
+      const keys = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(keys)) {
+        for (const key of keys) if (typeof key === "string") remove(key);
+      }
+      sessionStorage.removeItem(`fc-pending-cart-${c}`);
+    } catch {}
+  }, [params, remove]);
 
   const step = order ? trackingStep(order.status) : null;
   const plan = order?.plan && order.plan.status === "active" ? { pct: progressPct(order.paid, order.total), left: Math.max(0, order.total - order.paid) } : null;
