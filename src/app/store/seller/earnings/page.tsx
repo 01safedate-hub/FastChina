@@ -18,11 +18,11 @@ export default async function EarningsPage() {
     : await getPayouts();
   const fee = PLANS[d.store.plan].feePct;
   return (
-    <Page title="Earnings" subtitle={`You keep your markup minus a ${fee}% fee that covers payments. Paid every Friday for delivered orders.`}>
+    <Page title="Earnings" subtitle={`You keep your markup minus a ${fee}% plan fee. Eligible earnings are batched on Fridays; bank transfers are processed after review.`}>
       <DemoNote demo={state.kind === "demo"} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="On the way" value={ngn(d.earnings.pending)} sub="Paid once delivered" />
-        <Stat label="Ready" value={ngn(d.earnings.available)} sub="In this Friday’s payout" tone="gold" />
+        <Stat label="Ready" value={ngn(d.earnings.available)} sub="Eligible for the next Friday batch" tone="gold" />
         <Stat label="Paid to you" value={ngn(d.earnings.paid)} sub="All time" tone="green" />
       </div>
       <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
