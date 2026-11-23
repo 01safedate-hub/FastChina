@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const provider = url.searchParams.get("provider");
-  if (provider !== "paystack" && provider !== "flutterwave") {
-    return NextResponse.redirect(new URL("/track?payment=unverified", url.origin));
-  }
-  // Payment verification and fulfilment are handled by the Supabase payment-return
-  // function and signed provider webhooks. This route never reads gateway secrets.
-  return NextResponse.redirect(new URL("/track?payment=pending", url.origin));
+  const status = provider === "paystack" || provider === "flutterwave" ? "pending" : "unverified";
+  // This compatibility route does not verify payments. The provider callback must
+  // go directly to the server-side Supabase payment-return function.
+  const destination = new URL("/payment/confirmation", url.origin);
+  destination.searchParams.set("status", status);
+  return NextResponse.redirect(destination);
 }
