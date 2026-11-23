@@ -44,11 +44,20 @@ export function PaymentConfirmation() {
     if (kind !== "order" || !/^[A-Z0-9]{8}$/.test(code)) return;
     let last4: string | null = null;
     try { last4 = sessionStorage.getItem(`fc-track-${code}`); } catch {}
-    if (!last4 || !/^\\d{4}$/.test(last4)) {
-      setState("not-found");
-      return;
+    if (!last4 || !/^\d{4}$/.test(last4)) {
+      let cancelled = false;
+      setAttempts(1);
+      void (async () => {
+        const result = await attempt(() => getOrderPaymentDestination(code));
+        if (cancelled) return;
+        if (!result.ok || !result.value.ok) {
+          setState("error");
+          return;
+        }
+        setState(result.value.paid ? "paid" : "pending");
+      })();
+      return () => { cancelled = true; };
     }
-    setPhoneLast4(last4);
     let cancelled = false;
     let count = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -123,9 +132,9 @@ export function PaymentConfirmation() {
       </div>}
       {pending && <p className="text-xs text-muted" aria-live="polite">Checking payment status · {attempts}/12</p>}
       <div className="flex w-full flex-col gap-2 sm:flex-row">
-        {paid
-          ? <Link href={`/track?code=${encodeURIComponent(code)}`} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-md bg-ink px-4 font-bold text-white"><PackageSearch size={17} /> Track order</Link>
-          : <Link href={`/track?code=${encodeURIComponent(code)}`} className="flex min-h-12 flex-1 items-center justify-center rounded-md bg-ink px-4 font-bold text-white">Check order</Link>}
+        <Link href={orderHref} aria-disabled={state === "checking"} className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-md bg-ink px-4 font-bold text-white ${state === "checking" ? "pointer-events-none opacity-70" : ""}`}>
+          {state === "checking" ? <><LoaderCircle size={17} className="animate-spin" /> Checking order…</> : paid ? <><PackageSearch size={17} /> View processing order</> : "Check order"}
+        </Link>
         <Link href="/" className="flex min-h-12 flex-1 items-center justify-center rounded-md border border-line bg-white px-4 font-bold">Continue shopping</Link>
       </div>
       {!phoneLast4 && state !== "checking" && <p className="text-xs text-muted">Order status was checked securely. You can view its current payment category in your account.</p>}
