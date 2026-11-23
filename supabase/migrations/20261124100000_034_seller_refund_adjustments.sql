@@ -81,19 +81,12 @@ begin
     else
       -- Failed or pending transfers were not settled: release every item in the batch.
       if p.status = 'pending' then
-        update public.order_items set payout_id = null where order_id = p_order and payout_id = p.id;
-        select coalesce(sum(e.net_ngn), 0), count(*)::integer
-          into v_amount, v_items
-        from public.store_earnings_all e
-        join public.order_items i on i.id = e.item_id
-        where i.payout_id = p.id and e.bucket = 'paid_out';
-
-        if v_amount >= 1000 and v_items > 0 then
-          update public.seller_payouts set amount_ngn = v_amount::integer, items = v_items where id = p.id and status = 'pending';
-        else
-          update public.order_items set payout_id = null where payout_id = p.id;
-          update public.seller_payouts set status = 'failed' where id = p.id and status = 'pending';
-        end if;
+        -- A pending batch has not left the bank. Invalidate the whole batch and
+        -- release its remaining eligible items; the next Friday run rebuilds it
+        -- against the current earnings and outstanding adjustment ledger.
+        delete from public.seller_payout_adjustment_applications where payout_id = p.id;
+        update public.order_items set payout_id = null where payout_id = p.id;
+        update public.seller_payouts set status = 'failed' where id = p.id and status = 'pending';
       else
         update public.order_items set payout_id = null where payout_id = p.id;
       end if;
@@ -244,6 +237,7 @@ declare
   p public.seller_payouts;
   v_amount bigint;
   v_count integer;
+  v_applied bigint;
 begin
   if nullif(trim(p_reference), '') is null then raise exception 'Transfer reference required'; end if;
   select * into p from public.seller_payouts where id = p_payout for update;
@@ -255,7 +249,10 @@ begin
   join public.order_items i on i.id = e.item_id
   where i.payout_id = p.id and e.bucket = 'paid_out';
 
-  if v_count <> p.items or v_amount <> p.amount_ngn then
+  select coalesce(sum(amount_ngn), 0) into v_applied
+  from public.seller_payout_adjustment_applications where payout_id = p.id;
+
+  if v_count <> p.items or v_amount - v_applied <> p.amount_ngn then
     raise exception 'Payout does not reconcile to eligible seller earnings; do not transfer it.' using errcode = 'check_violation';
   end if;
 
