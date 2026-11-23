@@ -40,6 +40,7 @@ export async function getDashboard(): Promise<Dashboard | null> {
 export interface AdminOrder {
   id: string; code: string; status: string; pay_mode: string; total_ngn: number; paid_ngn: number; state: string; phone: string | null;
   created_at: string; items: AdminOrderItem[];
+  cancellationRequest?: { id: string; reason: string; status: "pending" | "approved" | "rejected"; staff_note: string | null; created_at: string } | null;
   channel?: "retail" | "wholesale"; ship_mode?: "air" | "sea";
 }
 export interface AdminCustomisation { id: number; files: string[]; note: string | null; status: "reviewing" | "quoted" | "paid" | "declined"; quote_ngn: number | null; staff_note: string | null }
@@ -54,7 +55,7 @@ export async function listOrders(f: { q?: string; status?: string; state?: strin
   if (!hasSupabase) return null;
   let query = secretDb()
     .from("orders")
-    .select("id, code, status, pay_mode, total_ngn, paid_ngn, state, phone, created_at, channel, ship_mode, order_items(id, title, variant_label, qty, unit_ngn, order_item_photos(url), order_customisations(id, files, note, status, quote_ngn, staff_note), product_skus(props_text, products(source_url, customisable, custom_moq)))")
+    .select("id, code, status, pay_mode, total_ngn, paid_ngn, state, phone, created_at, channel, ship_mode, order_cancellation_requests(id, reason, status, staff_note, created_at), order_items(id, title, variant_label, qty, unit_ngn, order_item_photos(url), order_customisations(id, files, note, status, quote_ngn, staff_note), product_skus(props_text, products(source_url, customisable, custom_moq)))")
     .order("created_at", { ascending: false })
     .limit(100);
   const q = f.q?.trim().replace(/[^A-Za-z0-9+]/g, "");
@@ -66,6 +67,7 @@ export async function listOrders(f: { q?: string; status?: string; state?: strin
   if (error) throw new Error(`Orders: ${error.message}`);
   return (data ?? []).map((o) => ({
     ...o,
+    cancellationRequest: (o.order_cancellation_requests as NonNullable<AdminOrder["cancellationRequest"]>[] | null)?.[0] ?? null,
     items: (o.order_items as unknown as (Omit<AdminOrderItem, "photos" | "custom"> & {
       order_item_photos: { url: string }[]; order_customisations: AdminCustomisation[] | AdminCustomisation | null;
       product_skus: { props_text: string | null; products: { source_url: string | null; customisable: boolean; custom_moq: number | null } | null } | null;

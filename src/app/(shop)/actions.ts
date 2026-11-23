@@ -161,6 +161,25 @@ function normalisePhone(raw: unknown): string | null {
 }
 
 /**
+ * Returns only the payment destination for a confirmation page. It deliberately exposes no
+ * customer, address, phone, or item data, so a lost browser session does not block order routing.
+ */
+export async function getOrderPaymentDestination(code: unknown): Promise<{ ok: true; paid: boolean } | { ok: false }> {
+  if (typeof code !== "string" || !/^[A-Za-z0-9]{8}$/.test(code.trim())) return { ok: false };
+  if (!(await allow("payment-status", 20, 600))) return { ok: false };
+  if (!hasSupabase) return { ok: false };
+  const { data, error } = await secretDb()
+    .from("orders")
+    .select("paid_ngn, total_ngn")
+    .eq("code", code.trim().toUpperCase())
+    .maybeSingle();
+  if (error || !data) return { ok: false };
+  const total = Number(data.total_ngn);
+  const paid = Number(data.paid_ngn);
+  return { ok: true, paid: total > 0 && paid >= total };
+}
+
+/**
  * Places an order. Everything is re-priced here; the browser only says what's in the cart.
  * Coupons and points are checked again by the database when the order is saved. Payment is taken next (Flutterwave).
  */
@@ -200,6 +219,34 @@ export async function placeOrder(input: {
   if (error) return { ok: false, message: error.message };
   const row = (data as { code: string; link_code: string | null }[])[0];
   return { ok: true, code: row.code, linkCode: row.link_code };
+}
+
+/** Customer cancellation is a request only; staff verify factory purchase status before approving it. */
+export async function requestOrderCancellation(code: unknown, reason: unknown): Promise<{ ok: boolean; message: string }> {
+  if (typeof code !== "string" || !/^[A-Za-z0-9]{8}$/.test(code.trim())) {
+    return { ok: false, message: "Invalid order reference." };
+  }
+  if (typeof reason !== "string") return { ok: false, message: "Please explain why you want to cancel." };
+  const cleanReason = reason.replace(/\\s+/g, " ").trim();
+  if (cleanReason.length < 10 || cleanReason.length > 1000) {
+    return { ok: false, message: "Your reason must be between 10 and 1,000 characters." };
+  }
+  const user = hasSupabase ? await getSessionUser() : null;
+  if (!user) return { ok: false, message: "Sign in to request cancellation." };
+  if (!(await allow("cancel-request", 5, 3600, user.id))) return { ok: false, message: TOO_MANY };
+  const { error } = await (await userDb()).rpc("request_order_cancellation", {
+    p_code: code.trim().toUpperCase(),
+    p_reason: cleanReason,
+  });
+  if (error) {
+    const message = error.message ?? "";
+    if (message.includes("already awaiting review")) return { ok: false, message: "A cancellation request is already awaiting review." };
+    if (message.includes("Group pay")) return { ok: false, message: "This Group pay order cannot be cancelled while contributions are incomplete." };
+    if (message.includes("passed the cancellation stage")) return { ok: false, message: "This order has passed the cancellation stage in our policy." };
+    if (message.includes("Order not found")) return { ok: false, message: "We couldn't find this order." };
+    return { ok: false, message: "We couldn't submit your request. Please try again." };
+  }
+  return { ok: true, message: "Your cancellation request has been sent for review. Your order is not cancelled yet." };
 }
 
 export interface TrackedOrder {

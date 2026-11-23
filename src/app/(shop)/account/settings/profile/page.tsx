@@ -12,7 +12,18 @@ export const metadata: Metadata = { title: "Manage my account", robots: { index:
 export default function ProfilePage() {
   return (
     <SettingsShell title="Manage my account">
-      <Suspense fallback={<div className="h-64 bg-white" />}>
+      <Suspense fallback={
+        <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-4 bg-white p-4 md:rounded-2xl md:border md:border-line">
+            <div className="h-5 w-20 animate-pulse rounded bg-[#EDEDED]" />
+            <div className="h-24 animate-pulse rounded-xl bg-[#EDEDED]" />
+            <div className="h-12 animate-pulse rounded-xl bg-[#EDEDED]" />
+            <div className="h-12 animate-pulse rounded-xl bg-[#EDEDED]" />
+            <div className="h-12 animate-pulse rounded-xl bg-[#EDEDED]" />
+          </div>
+          <div className="h-36 animate-pulse rounded-xl bg-[#EDEDED]" />
+        </div>
+      }>
         <Body />
       </Suspense>
     </SettingsShell>
@@ -27,7 +38,7 @@ async function Body() {
     <>
       <Panel>
         <h2 className="text-[15px] font-bold">Profile</h2>
-        <ProfileForm name={me.name} phone={me.phone?.replace(/^\+234/, "0") ?? ""} email={me.email ?? ""} />
+        <ProfileForm name={me.name} phone={me.phone?.replace(/^\+234/, "0") ?? ""} email={me.email ?? ""} avatarUrl={me.avatarUrl} />
       </Panel>
       <Panel>
         <h2 className="text-[15px] font-bold">Password</h2>

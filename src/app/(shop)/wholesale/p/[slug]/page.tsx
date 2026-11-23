@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getProduct, getProducts } from "@/lib/data/catalog";
+import { getProduct, getWholesaleProductSlugs } from "@/lib/data/catalog";
 import { naira } from "@/lib/format";
 import { MIN_QTY } from "@/lib/wholesale/rules";
 import { WholesaleProductView } from "./wholesale-product-view";
@@ -9,7 +9,7 @@ const listed = (p: { wholesale: boolean; wholesaleFrom: number }) => p.wholesale
 
 /** Prerender wholesale products; new ones render on first visit. Cache Components needs at least one entry. */
 export async function generateStaticParams() {
-  const slugs = (await getProducts()).filter(listed).map((p) => p.slug);
+  const slugs = await getWholesaleProductSlugs();
   return (slugs.length ? slugs : ["coming-soon"]).map((slug) => ({ slug }));
 }
 

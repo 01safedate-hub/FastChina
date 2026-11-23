@@ -6,8 +6,10 @@ import { allow, TOO_MANY } from "@/lib/rate-limit";
 import { getSessionUser, userDb } from "@/lib/supabase/auth";
 import { hasSupabase } from "@/lib/supabase/env";
 import { publicDb } from "@/lib/supabase/server";
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 
-type Result = { ok: boolean; message: string };
+
+type Result = { ok: boolean; message: string; checkoutUrl?: string };
 const DEMO: Result = { ok: true, message: "Demo mode: connect the database to save." };
 
 async function myStore() {
@@ -110,8 +112,34 @@ export async function removeListing(slug: unknown): Promise<Result> {
   return { ok: true, message: "Removed" };
 }
 
-/** Upgrades are paid by card/transfer; this opens with Flutterwave. Until then, staff can activate a plan. */
-export async function requestUpgrade(plan: unknown): Promise<Result> {
+/** Starts seller subscription checkout through Supabase Edge Functions; the plan changes only after verified payment. */
+export async function requestUpgrade(plan: unknown, provider: unknown = "paystack"): Promise<Result> {
   if (plan !== "pro" && plan !== "elite") return { ok: false, message: "Choose Pro or Elite." };
-  return { ok: false, message: "Online upgrades open with payments very soon. To upgrade today, message help@fastchina.shop and we’ll switch you over." };
+  if (provider !== "paystack" && provider !== "flutterwave") return { ok: false, message: "Choose a payment provider." };
+  if (!hasSupabase) return { ok: false, message: "Payments are unavailable while the database is disconnected." };
+  const user = await getSessionUser();
+  if (!user?.email) return { ok: false, message: "Sign in with an account that has an email address before upgrading." };
+  const m = await myStore();
+  if (!m) return { ok: false, message: "Open a store first." };
+  if (m.store.plan === plan) return { ok: false, message: "Your store is already on this plan." };
+  if (!(await allow("seller-plan-payment", 3, 3600, user.id))) return { ok: false, message: TOO_MANY };
+
+  const { data: sessionData } = await (await userDb()).auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) return { ok: false, message: "Your session expired. Sign in again." };
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/create-payment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "seller_subscription", plan, provider }),
+      cache: "no-store",
+    });
+    const result = await response.json();
+    if (!response.ok || result.ok !== true || typeof result.checkoutUrl !== "string") {
+      return { ok: false, message: typeof result.message === "string" ? result.message : "The payment provider could not start checkout." };
+    }
+    return { ok: true, message: "Opening secure payment checkout…", checkoutUrl: result.checkoutUrl };
+  } catch {
+    return { ok: false, message: "We couldn't connect to the payment service. Please try again." };
+  }
 }

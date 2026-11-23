@@ -1,6 +1,6 @@
 /* FastChina service worker. Keeps public pages, app files and product photos for offline browsing.
    Never caches account, admin, checkout, API calls or anything personal. */
-const VERSION = "fc-v2";
+const VERSION = "fc-v3";
 const SHELL = `${VERSION}-shell`;
 const PAGES = `${VERSION}-pages`;
 const ASSETS = `${VERSION}-assets`;

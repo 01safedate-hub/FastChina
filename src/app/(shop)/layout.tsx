@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import { CartProvider } from "@/components/shop/cart-provider";
-import { ShopFooter } from "@/components/shop/footer";
+import { ShopFooterVisibility } from "@/components/shop/footer-visibility";
 import { ShopHeader } from "@/components/shop/header";
 import { SiteDataProvider } from "@/components/shop/site-data";
 import { TabBar } from "@/components/shop/tab-bar";
@@ -17,12 +18,12 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
         <WishlistProvider>
         <a href="#main" className="sr-only z-[80] bg-ink px-4 py-3 font-bold text-white focus:not-sr-only focus:fixed focus:left-2 focus:top-2">Skip to content</a>
         <ThemeSync />
-        <ShopHeader />
+        <Suspense fallback={<div aria-hidden className="h-12 border-b border-line bg-white md:h-24" />}><ShopHeader /></Suspense>
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1360px] text-[13px] outline-none md:px-6">{children}</main>
-        <ShopFooter />
-        <TabBar />
+        <Suspense fallback={null}><ShopFooterVisibility /></Suspense>
+        <Suspense fallback={null}><TabBar /></Suspense>
         <OfflineBanner />
-        <WelcomeSheet />
+        <Suspense fallback={null}><WelcomeSheet /></Suspense>
         <div aria-hidden className="bolt-sweep" />
         </WishlistProvider>
       </CartProvider>

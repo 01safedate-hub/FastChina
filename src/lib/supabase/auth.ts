@@ -24,13 +24,14 @@ export interface SessionUser {
   id: string;
   email: string | null;
   phone: string | null;
+  user_metadata: Record<string, unknown>;
 }
 
 /** The signed-in user, verified with Supabase (not just read from the cookie). */
 export async function getSessionUser(): Promise<SessionUser | null> {
   if (!hasSupabase) return null;
   const { data } = await (await userDb()).auth.getUser();
-  return data.user ? { id: data.user.id, email: data.user.email ?? null, phone: data.user.phone ?? null } : null;
+  return data.user ? { id: data.user.id, email: data.user.email ?? null, phone: data.user.phone ?? null, user_metadata: data.user.user_metadata ?? {} } : null;
 }
 
 export type StaffCheck = { ok: true; user: SessionUser | null; demo: boolean } | { ok: false; reason: "signed-out" | "not-staff" };

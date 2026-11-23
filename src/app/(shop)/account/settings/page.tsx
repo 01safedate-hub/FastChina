@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getMe } from "@/lib/data/me";
@@ -11,7 +13,15 @@ export const metadata: Metadata = { title: "Settings", robots: { index: false } 
 export default function SettingsPage() {
   return (
     <SettingsShell title="Settings" back="/account">
-      <Suspense fallback={<div className="h-14 bg-white" />}>
+      <Suspense fallback={
+        <div className="flex min-h-[88px] items-center gap-3 bg-white px-4 py-3 md:rounded-2xl md:border md:border-line">
+          <div className="size-14 shrink-0 animate-pulse rounded-full bg-[#EDEDED]" />
+          <div className="flex flex-1 flex-col gap-2">
+            <div className="h-4 w-32 animate-pulse rounded bg-[#EDEDED]" />
+            <div className="h-3 w-44 max-w-full animate-pulse rounded bg-[#EDEDED]" />
+          </div>
+        </div>
+      }>
         <Account />
       </Suspense>
       <Group>
@@ -48,7 +58,20 @@ async function Account() {
   return (
     <Group>
       {me ? (
-        <Row href="/account/settings/profile" label={<strong className="font-bold">{me.name}</strong>} value={me.email ?? me.phone ?? ""} />
+        <Link href="/account/settings/profile" className="flex min-h-[88px] items-center gap-3 px-4 py-3 hover:bg-surface">
+          {me.avatarUrl ? (
+            <img src={me.avatarUrl} alt="" className="size-14 shrink-0 rounded-full border-2 border-ink object-cover" />
+          ) : (
+            <span className="flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-surface text-lg font-extrabold text-ink">
+              {me.name.trim()[0]?.toUpperCase() ?? "F"}
+            </span>
+          )}
+          <span className="flex min-w-0 flex-1 flex-col gap-1">
+            <strong className="truncate text-[15px] font-bold">{me.name}</strong>
+            <span className="break-all text-[13px] text-muted">{me.email ?? me.phone ?? ""}</span>
+          </span>
+          <ChevronRight aria-hidden size={18} className="shrink-0 text-subtle" />
+        </Link>
       ) : (
         <Row href="/sign-in?next=/account/settings" label={<strong className="font-bold">Sign in or create an account</strong>} />
       )}

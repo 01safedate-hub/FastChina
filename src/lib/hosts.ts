@@ -4,7 +4,7 @@
  */
 const list = (v: string | undefined, d: string) => (v ?? d).split(",").map((h) => h.trim().toLowerCase());
 const STORE_HOSTS = list(process.env.STORE_HOSTS, "fastchina.store,www.fastchina.store");
-const MAIN_HOSTS = list(process.env.MAIN_HOSTS, "fastchina.shop,www.fastchina.shop");
+const MAIN_HOSTS = list(process.env.MAIN_HOSTS, "stunning-youtiao-4a78bd.netlify.app,fastchina.shop,www.fastchina.shop");
 const STORE_ROOT = process.env.STORE_ROOT_DOMAIN ?? "fastchina.store";
 const isInfra = (h: string) => h === "localhost" || /^[\d.]+$/.test(h) || h.endsWith(".netlify.app") || h.endsWith(".vercel.app") || h.endsWith(".local");
 

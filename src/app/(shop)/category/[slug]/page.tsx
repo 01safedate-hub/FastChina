@@ -6,7 +6,7 @@ import { ProductCard } from "@/components/shop/product-card";
 import { JsonLd } from "@/components/seo/json-ld";
 import { CATEGORY_KEYS, CATEGORY_PAGES } from "@/lib/content/category-pages";
 import { guideBySlug } from "@/lib/content/guides";
-import { getProducts } from "@/lib/data/catalog";
+import { getProductsByCategory } from "@/lib/data/catalog";
 import { naira } from "@/lib/format";
 import type { CategoryKey } from "@/lib/pricing/engine";
 import { breadcrumbs, faq, graph, SHOP_URL, snippet } from "@/lib/seo";
@@ -33,7 +33,7 @@ export default async function CategoryPage({ params }: PageProps<"/category/[slu
   const { slug } = await params;
   if (!isKey(slug)) notFound();
   const c = CATEGORY_PAGES[slug];
-  const products = (await getProducts()).filter((p) => p.category === slug);
+  const products = await getProductsByCategory(slug);
   const from = products.length ? Math.min(...products.map((p) => p.prices.list)) : 0;
   const guides = c.guides.map(guideBySlug).filter((g) => g !== undefined);
 

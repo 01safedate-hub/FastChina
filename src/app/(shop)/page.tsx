@@ -10,7 +10,7 @@ import { Countdown } from "@/components/ui/countdown";
 import { InfoButton } from "@/components/ui/info-button";
 import { ProductIcon } from "@/components/ui/product-icon";
 import { JsonLd } from "@/components/seo/json-ld";
-import { getProducts } from "@/lib/data/catalog";
+import { getProductFeedPage } from "@/lib/data/catalog";
 import { imageMap, imagesFor } from "@/lib/catalog/thumbs";
 import { RotatingPhoto } from "@/components/shop/rotating-photo";
 import { CATEGORY_PAGES } from "@/lib/content/category-pages";
@@ -32,7 +32,41 @@ const BUBBLES = [
 ] as const;
 
 export default async function HomePage() {
-  const products = await getProducts();
+  // Reserve distinct catalogue pages for the nine curated collections. Each query
+  // stays small to avoid the Supabase statement timeout seen with large joined reads.
+  const firstPage = await getProductFeedPage();
+  const collectionPool: typeof firstPage.products = [];
+  let nextCursor = firstPage.nextCursor;
+  for (let pageNumber = 0; pageNumber < 2 && nextCursor; pageNumber++) {
+    const page = await getProductFeedPage(nextCursor);
+    collectionPool.push(...page.products);
+    nextCursor = page.nextCursor;
+  }
+
+  const feed = { products: firstPage.products, nextCursor };
+  const products = [...firstPage.products, ...collectionPool];
+  const unused = new Set(collectionPool.map((product) => product.slug));
+  const takeUnique = (candidates: typeof products) => {
+    const selected = candidates.filter((product) => unused.has(product.slug)).slice(0, 12);
+    selected.forEach((product) => unused.delete(product.slug));
+    return selected;
+  };
+  const byLowestPrice = [...collectionPool].sort((a, b) => a.prices.list - b.prices.list || a.name.localeCompare(b.name));
+  const bySales = [...collectionPool].sort((a, b) => b.sold - a.sold);
+  const byNewest = [...collectionPool].filter((p) => p.isNew || p.addedAt)
+    .sort((a, b) => Number(!!b.isNew) - Number(!!a.isNew) || (b.addedAt ?? 0) - (a.addedAt ?? 0));
+  const inCategories = (keys: string[]) => collectionPool.filter((p) => keys.includes(String(p.category)));
+  const feedCollections = [
+    { title: "Trending Now", products: takeUnique(bySales) },
+    { title: "Budget Finds", products: takeUnique(byLowestPrice) },
+    { title: "Under ₦5,000", products: takeUnique(byLowestPrice.filter((p) => p.prices.list < 5_000)) },
+    { title: "Just Arrived", products: takeUnique(byNewest) },
+    { title: "Fashion Picks", products: takeUnique(inCategories(["fashion", "hair", "shoes", "bags", "jewellery", "beauty"])) },
+    { title: "Under ₦10,000", products: takeUnique(byLowestPrice.filter((p) => p.prices.list >= 5_000 && p.prices.list < 10_000)) },
+    { title: "Home & Living", products: takeUnique(inCategories(["home", "furniture", "machines", "kitchen"])) },
+    { title: "Wholesale Deals", products: takeUnique(collectionPool.filter((p) => p.wholesale && p.wholesaleFrom > 0)) },
+    { title: "Best Sellers", products: takeUnique(bySales) },
+  ];
   const photos = imageMap(products, BUBBLE_PHOTOS);
   const heroPhotos = imageMap(products, {
     gadgets: { category: ["gadgets", "audio"] }, women: { category: ["fashion", "bags", "beauty"], name: "women" },
@@ -112,7 +146,7 @@ export default async function HomePage() {
         <RetailerTile />
       </div>
 
-      <ProductFeed products={products} />
+      <ProductFeed products={feed.products} nextCursor={feed.nextCursor} collections={feedCollections} />
 
       <div className="px-3 md:px-0">
         <TrustGrid />

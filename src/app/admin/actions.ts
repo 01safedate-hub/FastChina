@@ -41,6 +41,22 @@ export async function cancelOrder(orderId: unknown, note: unknown): Promise<Resu
   return error ? { ok: false, message: error.message } : { ok: true, message: data === "refunded" ? "Refunded" : "Cancelled" };
 }
 
+/** Staff review of a customer cancellation request. Approval and refund are atomic in Supabase. */
+export async function reviewCancellationRequest(id: unknown, approve: boolean, note: unknown): Promise<Result> {
+  await requireStaff();
+  if (typeof id !== "string") return { ok: false, message: "Unknown cancellation request." };
+  if (typeof note !== "string" || note.trim().length > 1000) return { ok: false, message: "Keep the note under 1,000 characters." };
+  if (!hasSupabase) return { ok: true, message: "Demo: not saved." };
+  const { data, error } = await secretDb().rpc("review_order_cancellation_request", {
+    p_request: id,
+    p_approve: approve,
+    p_note: note.trim() || null,
+  });
+  return error
+    ? { ok: false, message: error.message }
+    : { ok: true, message: data === "rejected" ? "Request declined" : "Request approved and order cancelled/refunded" };
+}
+
 /** Super admins only. The database also refuses demoting the last super admin. */
 export async function setRole(userId: unknown, role: unknown): Promise<Result> {
   const me = await requireStaff();
