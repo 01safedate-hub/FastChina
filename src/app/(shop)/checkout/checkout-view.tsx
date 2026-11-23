@@ -165,7 +165,7 @@ export function CheckoutView() {
 
   const stations = STATIONS.filter((s) => s.state === state);
   const eta = now ? `${addDaysLabel(now, 10)} – ${addDaysLabel(now, 18)}` : "in 10–18 days";
-  const cta = mode === "full" ? `PAY ${naira(due)}` : mode === "small" ? (weekly ? `PAY ${naira(weekly)} NOW` : `PAY ${naira(due)} IN FULL`) : mine ? `PAY ${naira(mine)} & SHARE LINK` : "CREATE LINK";
+  const cta = mode === "full" ? `PAY ${naira(due)}` : mode === "small" ? (weekly ? `PAY ${naira(weekly)} NOW` : `PAY ${naira(due)} IN FULL`) : "CREATE GROUP LINK";
 
   if (selected.length === 0) {
     return (
@@ -298,64 +298,12 @@ export function CheckoutView() {
           )}
 
           {mode === "group" && (
-            <div className="flex flex-col gap-2.5 rounded-md bg-group-soft p-2.5">
-              <span className="flex items-center justify-between font-bold">
-                You pay now
-                <InfoButton topic="group" />
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {[0, 50_000, 100_000, due].map((v) => (
-                  <button key={v} type="button" aria-pressed={mine === v} onClick={() => setMine(v)} className={chip(mine === v)}>
-                    {v === due ? "All of it" : naira(v)}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-col gap-2 rounded-md bg-white p-2.5">
-                <span className="text-xs text-muted">Your link · open for 7 days</span>
-                <strong className="font-mono text-[13px]">fastchina.shop/c/TOLU-7K2X</strong>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard?.writeText("https://fastchina.shop/c/TOLU-7K2X").catch(() => {});
-                      setCopied(true);
-                    }}
-                    className="flex min-h-10 items-center justify-center gap-1.5 border border-ink text-xs font-extrabold"
-                  >
-                    <Copy aria-hidden size={14} /> {copied ? "COPIED" : "COPY LINK"}
-                  </button>
-                  <Link href="/c/TOLU-7K2X" className="flex min-h-10 items-center justify-center bg-success text-xs font-extrabold text-white">WHATSAPP</Link>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="flex justify-between">
-                  <strong>{naira(funded)} of {naira(due)}</strong>
-                  <span className="font-bold text-group">● Live · {others.length + (mine ? 1 : 0)} people</span>
-                </span>
-                <Progress value={(funded / due) * 100} className="h-2 bg-[#E0DEF7]" barClass="bg-group" label="Group pay progress" />
-              </div>
-              <span className="font-bold">Pay order (top first)</span>
-              {allocation.map(({ it, price, got, done }, idx) => (
-                <div key={it.key} className="flex items-center gap-2 rounded-md bg-white p-2">
-                  <ProductTile tint={it.snap.tint} icon={it.snap.icon} name={it.snap.name} image={it.snap.image} sizes="40px" className="h-11 w-9 shrink-0" iconSize={18} />
-                  <span className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="truncate">{it.snap.name} · {naira(price)}</span>
-                    <Progress value={(got / price) * 100} className="h-1" barClass={done ? "bg-[#16A34A]" : "bg-group"} label={`${it.snap.name} paid`} />
-                    <span className={cn("text-[11px] font-bold", done ? "text-success" : "text-muted")}>{done ? "Paid · ready to ship" : `${Math.round((got / price) * 100)}% paid`}</span>
-                  </span>
-                  <span className="flex flex-col gap-0.5">
-                    <button type="button" aria-label="Pay this item sooner" onClick={() => move(idx, -1)} className="flex h-6 w-8 items-center justify-center border border-black/15 bg-white"><ChevronUp aria-hidden size={14} /></button>
-                    <button type="button" aria-label="Pay this item later" onClick={() => move(idx, 1)} className="flex h-6 w-8 items-center justify-center border border-black/15 bg-white"><ChevronDown aria-hidden size={14} /></button>
-                  </span>
-                </div>
-              ))}
-              {paidCount > 0 && paidCount < allocation.length && (
-                <button type="button" className="min-h-11 border-[1.5px] border-success bg-success-soft text-[13px] font-extrabold text-success">SHIP PAID ITEMS NOW ({paidCount})</button>
-              )}
-              <span className="text-xs leading-relaxed text-muted">If the link expires, money already paid becomes wallet credit. Contributors are refunded if you cancel. (Live updates are simulated in this preview.)</span>
+            <div className="rounded-md bg-group-soft p-3 text-sm">
+              <strong>Share the cost with friends</strong>
+              <p className="mt-1 text-xs leading-relaxed text-muted">Create your order first. FastChina will generate a unique contribution link that you can share. Friends can contribute securely by Paystack or Flutterwave until the order is fully funded.</p>
+              <p className="mt-2 text-xs font-semibold text-muted">The link remains active for 7 days. No payment is taken from you when creating the link.</p>
             </div>
           )}
-        </section>
 
         {/* Savings */}
         <section className="flex flex-col gap-2.5 bg-white p-3 md:rounded-md md:border md:border-line md:p-4">
@@ -390,12 +338,11 @@ export function CheckoutView() {
         <div className="flex justify-between border-t border-line pt-1.5 text-base"><strong>Total</strong><strong>{naira(due)}</strong></div>
         <div className="fixed inset-x-0 bottom-0 z-30 flex flex-col gap-1 border-t border-line bg-white px-3 pt-2 pb-[max(14px,env(safe-area-inset-bottom))] md:static md:border-0 md:p-0 md:pt-2">
           {placeMsg && <p role="alert" className="text-center text-xs font-semibold text-sale">{placeMsg}</p>}
-          {!placeMsg && mode === "group" && <p role="status" className="text-center text-xs font-semibold text-muted">Group payments are not connected to real payment processing yet. Choose Pay in full or Small small for now.</p>}
           {!placeMsg && !online && <p role="status" className="text-center text-xs font-semibold text-muted">You’re offline. We’ll confirm your total when you reconnect.</p>}
           {!placeMsg && online && quoteFailed && <p role="status" className="text-center text-xs font-semibold text-muted">Showing an estimate. We couldn’t confirm the final total yet; it updates when your connection settles.</p>}
           <button
             type="button"
-            disabled={placing || selected.length === 0 || !online || !serverQuote || mode === "group" || ((mode === "full" || mode === "small") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))}
+            disabled={placing || selected.length === 0 || !online || !serverQuote || ((mode === "full" || mode === "small") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))}
             onClick={() =>
               startPlacing(async () => {
                 setPlaceMsg(null);
@@ -406,6 +353,11 @@ export function CheckoutView() {
                 if (!call.ok) return setPlaceMsg(call.message);
                 const r = call.value;
                 if (!r.ok) return setPlaceMsg(r.message);
+                if (mode === "group") {
+                  if (!r.linkCode) return setPlaceMsg("The order was created, but its Group Pay link could not be generated. Contact support with order " + r.code + ".");
+                  window.location.assign("/c/" + encodeURIComponent(r.linkCode));
+                  return;
+                }
                 const payment = await startOrderPayment({
                   code: r.code, phone, email, provider: method,
                   amountNgn: mode === "full" ? due : weekly,
