@@ -107,16 +107,16 @@ export async function getProducts(): Promise<Product[]> {
   // Never hydrate the entire product/SKU graph in one build-time query. Department
   // pages only need a representative catalogue pool, so fetch it in small,
   // deterministic pages to stay below Supabase's statement timeout.
-  const rows: Row[] = [];
+  const products: Product[] = [];
   let cursor: string | null = null;
   const maxPages = 5;
   for (let page = 0; page < maxPages; page++) {
     const result = await getProductFeedPage(cursor, 24);
-    rows.push(...result.products as unknown as Row[]);
+    products.push(...result.products);
     cursor = result.nextCursor;
     if (!cursor) break;
   }
-  return rows.map(rowToProduct).filter((p): p is Product => p !== null);
+  return products;
 }
 
 /** Products for one category only. First select a small set of slugs, then hydrate only those products. */
