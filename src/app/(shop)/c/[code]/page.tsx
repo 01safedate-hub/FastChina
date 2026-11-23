@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getProducts } from "@/lib/data/catalog";
+import { SAMPLE_PRODUCTS } from "@/lib/catalog/sample";
+import { sampleToProduct } from "@/lib/catalog/from-sample";
 import { hasSupabase } from "@/lib/supabase/env";
 import { linkProgress } from "../../actions";
 import { ContributeView } from "./contribute-view";
@@ -34,8 +35,13 @@ export default async function ContributePage({ params }: PageProps<"/c/[code]">)
       </Suspense>
     );
   }
-  // The demo link shows how a contribution page works with sample products.
-  const all = await getProducts();
-  const items = ["satin-cowl-neck-midi-dress", "body-wave-lace-front-wig-22", "amoled-android-phone-5g"].flatMap((s) => all.filter((p) => p.slug === s));
-  return <ContributeView code={code} items={items.length ? items : all.slice(0, 3)} />;
+  // The demo link is intentionally backed by local sample data. Never fetch the
+  // full production catalogue while Next.js prerenders this public demo route.
+  const sampleBySlug = new Map(SAMPLE_PRODUCTS.map((sample) => [sample.slug, sample]));
+  const items = ["satin-cowl-neck-midi-dress", "body-wave-lace-front-wig-22", "amoled-android-phone-5g"]
+    .flatMap((slug) => {
+      const sample = sampleBySlug.get(slug);
+      return sample ? [sampleToProduct(sample)] : [];
+    });
+  return <ContributeView code={code} items={items} />;
 }
