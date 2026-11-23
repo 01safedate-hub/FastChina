@@ -140,6 +140,22 @@ Deno.serve(async req => {
       if (amount > remaining || (o.pay_mode === "full" && amount !== remaining)) return reply({ok:false,message:"The payment amount does not match the remaining order balance."},400);
       email = b.email.trim().toLowerCase(); description = `FastChina order ${code}`;
       row = {provider,purpose:"order",reference,order_id:o.id,customer_id:o.customer_id,amount_ngn:amount,currency:"NGN",status:"pending"};
+    } else if (action === "group_contribution") {
+      const code = typeof b.code === "string" ? b.code.trim().toUpperCase() : "";
+      const name = typeof b.contributorName === "string" ? b.contributorName.trim().slice(0, 60) : "A friend";
+      if (!/^[A-Z0-9-]{4,20}$/.test(code)) return reply({ok:false,message:"This Group Pay link is invalid."},400);
+      if (!validEmail(b.email)) return reply({ok:false,message:"Enter a valid email address for your receipt."},400);
+      amount = Number(b.amountNgn);
+      if (!Number.isSafeInteger(amount) || amount < 500) return reply({ok:false,message:"The minimum contribution is ₦500."},400);
+      const {data:l,error:le} = await db.from("group_links").select("id,order_id,expires_at,settled_at").eq("code",code).maybeSingle();
+      if (le || !l || l.settled_at || new Date(l.expires_at).getTime() <= Date.now()) return reply({ok:false,message:"This Group Pay link has closed."},410);
+      const {data:o,error:oe} = await db.from("orders").select("total_ngn,paid_ngn,status").eq("id",l.order_id).maybeSingle();
+      if (oe || !o || !["awaiting_payment","part_paid"].includes(o.status)) return reply({ok:false,message:"This order is no longer accepting contributions."},409);
+      const remaining = Number(o.total_ngn)-Number(o.paid_ngn);
+      if (remaining <= 0 || amount > remaining) return reply({ok:false,message:"The contribution amount exceeds the remaining balance."},400);
+      if (amount < 500 && amount !== remaining) return reply({ok:false,message:"The minimum contribution is ₦500."},400);
+      email = b.email.trim().toLowerCase(); description = `FastChina Group Pay contribution · ${code}`;
+      row = {provider,purpose:"group_contribution",reference,group_link_id:l.id,contributor_name:name || "A friend",customer_id:user?.id ?? null,amount_ngn:amount,currency:"NGN",status:"pending"};
     } else if (action === "seller_subscription") {
       if (!user) return reply({ok:false,message:"Sign in before upgrading your seller plan."},401);
       if (b.plan !== "pro" && b.plan !== "elite") return reply({ok:false,message:"Choose Pro or Elite."},400);
