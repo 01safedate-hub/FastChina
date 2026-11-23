@@ -80,17 +80,17 @@ export function GroupOrdersList({ orders }: { orders: GroupOrder[] }) {
               <span>{complete ? "No balance remaining" : `${naira(remaining)} left`}</span>
             </div>
             <p className="mt-2 text-xs text-muted">{item.items.filter((line) => line.funded).length} of {item.items.length} items marked funded · {expired ? "Closed" : "Link expires"} {new Date(item.expires_at).toLocaleDateString("en-NG", { dateStyle: "medium", timeZone: "Africa/Lagos" })}</p>
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            {!complete && !expired && <div className="mt-4 grid grid-cols-2 gap-2">
               <button type="button" onClick={() => void copy(item.code)} className="flex min-h-11 items-center justify-center gap-2 rounded-md border border-line text-sm font-bold">
                 {copied === item.code ? <Check size={16} /> : <Copy size={16} />}{copied === item.code ? "Copied" : "Copy link"}
               </button>
               <button type="button" onClick={() => void share(item.code)} className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-ink text-sm font-bold text-white">
                 <Share2 size={16} /> Share link
               </button>
-            </div>
-            <Link href={url} className="mt-3 flex min-h-10 items-center justify-center gap-2 text-sm font-semibold text-muted">
+            </div>}
+            {!complete && !expired && <Link href={url} className="mt-3 flex min-h-10 items-center justify-center gap-2 text-sm font-semibold text-muted">
               Open contribution page <ExternalLink size={14} />
-            </Link>
+            </Link>}
           </li>
         );
       })}
