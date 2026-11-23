@@ -3,59 +3,132 @@
 import { CheckCircle2, Clock3, CircleAlert, PackageSearch } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { attempt } from "@/lib/net";
+import { trackOrder, type TrackedOrder } from "../../actions";
 import { useCart } from "@/components/shop/cart-provider";
+
+type PaymentState = "checking" | "pending" | "partial" | "paid" | "not-found" | "error";
 
 export function PaymentConfirmation() {
   const params = useSearchParams();
-  const status = params.get("status");
-  const code = params.get("code");
+  const code = params.get("code")?.trim().toUpperCase() ?? "";
   const kind = params.get("kind") === "subscription" ? "subscription" : "order";
   const { remove } = useCart();
+  const [state, setState] = useState<PaymentState>("checking");
+  const [order, setOrder] = useState<TrackedOrder | null>(null);
+  const [phoneLast4, setPhoneLast4] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState(0);
+
+  const refresh = useCallback(async (last4: string) => {
+    const result = await attempt(() => trackOrder(code, last4));
+    if (!result.ok || !result.value.ok) {
+      setState(result.ok ? "not-found" : "error");
+      return false;
+    }
+    const current = result.value.order;
+    setOrder(current);
+    if (current.paid >= current.total && current.total > 0) {
+      setState("paid");
+      return true;
+    }
+    if (current.paid > 0) {
+      setState("partial");
+      return false;
+    }
+    setState("pending");
+    return false;
+  }, [code]);
 
   useEffect(() => {
-    if (status !== "success" || kind !== "order" || !code) return;
+    if (kind !== "order" || !/^[A-Z0-9]{8}$/.test(code)) return;
+    let last4: string | null = null;
+    try { last4 = sessionStorage.getItem(`fc-track-${code}`); } catch {}
+    if (!last4 || !/^\\d{4}$/.test(last4)) {
+      setState("not-found");
+      return;
+    }
+    setPhoneLast4(last4);
+    let cancelled = false;
+    let count = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const check = async () => {
+      if (cancelled) return;
+      count += 1;
+      setAttempts(count);
+      const paid = await refresh(last4!);
+      if (cancelled || paid || count >= 12) return;
+      timer = setTimeout(check, 5000);
+    };
+    void check();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [kind, code, refresh]);
+
+  useEffect(() => {
+    if (state !== "paid" || kind !== "order" || !code) return;
     try {
       const raw = sessionStorage.getItem(`fc-pending-cart-${code}`);
       const keys = raw ? JSON.parse(raw) : [];
       if (Array.isArray(keys)) for (const key of keys) if (typeof key === "string") remove(key);
       sessionStorage.removeItem(`fc-pending-cart-${code}`);
     } catch {}
-  }, [status, kind, code, remove]);
+  }, [state, kind, code, remove]);
 
-  const success = status === "success";
-  const pending = status === "pending";
-  const Icon = success ? CheckCircle2 : pending ? Clock3 : CircleAlert;
-  const heading = success
-    ? kind === "subscription" ? "Payment confirmed" : "Payment confirmed"
-    : pending ? "Payment is being confirmed" : "Payment not confirmed";
-  const detail = success
-    ? kind === "subscription"
-      ? "Your subscription payment has been verified and your seller plan has been updated."
-      : "Your payment has been verified. Your order is now in our system."
-    : pending
-      ? "We have not received final confirmation from the payment provider yet. Please do not pay again while this is being checked."
-      : "We could not match this return to a verified payment. If you completed a payment, contact support with your payment receipt.";
+  const paid = state === "paid";
+  const partial = state === "partial";
+  const pending = state === "checking" || state === "pending";
+  const Icon = paid ? CheckCircle2 : pending ? Clock3 : state === "not-found" || state === "error" ? CircleAlert : CheckCircle2;
+  const heading = paid
+    ? "Payment confirmed"
+    : partial
+      ? "Part payment received"
+      : pending
+        ? "Payment is being confirmed"
+        : "We couldn’t check this payment";
+  const detail = paid
+    ? "Supabase confirms that your order is fully paid. Your order is now being processed."
+    : partial
+      ? `Supabase confirms that ₦${order?.paid.toLocaleString("en-NG")} has been received. Your remaining balance is ₦${Math.max(0, (order?.total ?? 0) - (order?.paid ?? 0)).toLocaleString("en-NG")}.`
+      : pending
+        ? "We’re checking your order directly against its payment record. This page will update automatically when the payment webhook has been processed. Please do not pay again while this check is running."
+        : state === "not-found"
+          ? "We could not verify this order using the saved checkout details. Use Track order to enter your order code and the last four digits of your checkout phone number."
+          : "We couldn’t retrieve the latest order status. Your payment has not been declared failed. Please check your order again shortly.";
+
+  if (kind === "subscription") {
+    return (
+      <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-5 px-4 py-12 text-center">
+        <Clock3 aria-hidden size={34} />
+        <h1 className="text-2xl font-extrabold">Subscription payment status</h1>
+        <p className="text-sm leading-relaxed text-muted">Subscription confirmation is not checked by this order-status page. Please check your seller account before attempting another payment.</p>
+        <Link href="/account" className="flex min-h-12 w-full items-center justify-center rounded-md bg-ink px-4 font-bold text-white">My account</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-5 px-4 py-12 text-center">
-      <div className={`flex size-16 items-center justify-center rounded-full ${success ? "bg-success-soft text-success" : "bg-surface text-ink"}`}>
+      <div className={`flex size-16 items-center justify-center rounded-full ${paid ? "bg-success-soft text-success" : "bg-surface text-ink"}`}>
         <Icon aria-hidden size={34} />
       </div>
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-extrabold">{heading}</h1>
         <p className="text-sm leading-relaxed text-muted">{detail}</p>
       </div>
-      {code && kind === "order" && <div className="w-full rounded-lg border border-line bg-white p-4">
+      {code && <div className="w-full rounded-lg border border-line bg-white p-4">
         <span className="block text-xs text-muted">Order code</span>
         <strong className="font-mono text-xl">{code}</strong>
+        {order && <span className="mt-1 block text-xs text-muted">₦{order.paid.toLocaleString("en-NG")} paid of ₦{order.total.toLocaleString("en-NG")}</span>}
       </div>}
+      {pending && <p className="text-xs text-muted" aria-live="polite">Checking payment status · {attempts}/12</p>}
       <div className="flex w-full flex-col gap-2 sm:flex-row">
-        {success && kind === "order" && code
+        {paid
           ? <Link href={`/track?code=${encodeURIComponent(code)}`} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-md bg-ink px-4 font-bold text-white"><PackageSearch size={17} /> Track order</Link>
-          : <Link href="/account" className="flex min-h-12 flex-1 items-center justify-center rounded-md bg-ink px-4 font-bold text-white">My account</Link>}
+          : <Link href={`/track?code=${encodeURIComponent(code)}`} className="flex min-h-12 flex-1 items-center justify-center rounded-md bg-ink px-4 font-bold text-white">Check order</Link>}
         <Link href="/" className="flex min-h-12 flex-1 items-center justify-center rounded-md border border-line bg-white px-4 font-bold">Continue shopping</Link>
       </div>
+      {!phoneLast4 && <p className="text-xs text-muted">Your checkout phone verification details were not available in this browser.</p>}
     </div>
   );
 }
