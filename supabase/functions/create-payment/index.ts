@@ -30,10 +30,74 @@ async function initialize(provider: "paystack"|"flutterwave", reference: string,
   }
   const secret = Deno.env.get("FLUTTERWAVE_SECRET_KEY");
   if (!secret) throw new Error("Flutterwave is not configured in Supabase Secrets.");
-  const payloadHash = await flutterwavePayloadHash(amount, email, reference, secret);\n  const r = await fetch("https://api.flutterwave.com/v3/payments", { method:"POST", headers:{ Authorization:`Bearer ${secret}`, "Content-Type":"application/json" }, body:JSON.stringify({ tx_ref:reference, amount, currency:"NGN", redirect_url:callback, customer:{email}, payload_hash:payloadHash, customizations:{title:"FastChina",description} }) });
-  const j = await r.json();
-  if (!r.ok || j.status !== "success" || typeof j.data?.link !== "string") throw new Error("Flutterwave could not start checkout.");
-  return { checkoutUrl:j.data.link, transactionId:null };
+  const payloadHash = await flutterwavePayloadHash(amount, email, reference, secret);\n  const r = await fetch("https://api.flutterwave.com/v3/payments", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      tx_ref: reference,
+      amount,
+      currency: "NGN",
+      redirect_url: callback,
+      customer: { email },
+      payload_hash: payloadHash,
+      customizations: { title: "FastChina", description },
+      configuration: { session_duration: 30, max_retry_attempt: 3 },
+    }),
+  });
+
+  const responseText = await r.text();
+  let j: Record<string, any>;
+  try {
+    j = JSON.parse(responseText);
+  } catch {
+    console.error("Flutterwave returned non-JSON response", {
+      httpStatus: r.status,
+      requestId: r.headers.get("flw-request-id") || r.headers.get("x-request-id"),
+      contentType: r.headers.get("content-type"),
+    });
+    throw new Error("Flutterwave returned an unreadable response. Please try again.");
+  }
+
+  if (!r.ok || j.status !== "success" || typeof j.data?.link !== "string") {
+    console.error("Flutterwave checkout initialization failed", {
+      httpStatus: r.status,
+      providerStatus: j.status,
+      providerMessage: j.message,
+      requestId: r.headers.get("flw-request-id") || r.headers.get("x-request-id"),
+    });
+    throw new Error("Flutterwave could not create a checkout session. Please try again.");
+  }
+
+  let checkout: URL;
+  try {
+    checkout = new URL(j.data.link);
+  } catch {
+    console.error("Flutterwave returned an invalid checkout URL", { reference });
+    throw new Error("Flutterwave returned an invalid checkout link.");
+  }
+
+  // Do not rewrite provider URLs: hosted-link tokens may be bound to their original host.
+  // The supported hosted checkout origin in Flutterwave's current API documentation is checkout.flutterwave.com.
+  if (
+    checkout.protocol !== "https:" ||
+    checkout.hostname !== "checkout.flutterwave.com" ||
+    !/^\/v3\/hosted\/pay\/[^/]+$/.test(checkout.pathname)
+  ) {
+    console.error("Flutterwave returned an unsupported hosted-checkout URL", {
+      reference,
+      hostname: checkout.hostname,
+      pathname: checkout.pathname,
+      providerStatus: j.status,
+      requestId: r.headers.get("flw-request-id") || r.headers.get("x-request-id"),
+    });
+    throw new Error("Flutterwave returned an unsupported test checkout address. The payment provider must correct this checkout link.");
+  }
+
+  return { checkoutUrl: checkout.toString(), transactionId: null };
 }
 
 Deno.serve(async req => {
