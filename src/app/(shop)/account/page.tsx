@@ -111,7 +111,10 @@ function Profile() {
       <section className="mx-2 flex flex-col gap-3 rounded-2xl bg-white p-4 md:mx-0 md:border md:border-line">
         <div className="flex items-center justify-between">
           <h2 className="text-[15px] font-extrabold">My orders</h2>
-          <Link href="/account/orders" className="text-[13px] text-muted">View all ›</Link>
+          <div className="flex items-center gap-3">
+            <Link href="/account/group-orders" className="text-[13px] font-bold text-group">Group Pay ›</Link>
+            <Link href="/account/orders" className="text-[13px] text-muted">View all ›</Link>
+          </div>
         </div>
         <Suspense fallback={<OrderDetailsFallback />}>
           <OrderDetails />
