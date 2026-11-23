@@ -121,7 +121,7 @@ export function PaymentConfirmation() {
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-5 px-4 py-12 text-center">
       <div className={`flex size-16 items-center justify-center rounded-full ${paid ? "bg-success-soft text-success" : "bg-surface text-ink"}`}>
-        <Icon aria-hidden size={34} />
+        <Icon aria-hidden size={34} className={pending ? "animate-spin" : undefined} />
       </div>
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-extrabold">{heading}</h1>
