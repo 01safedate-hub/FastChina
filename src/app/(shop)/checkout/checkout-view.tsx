@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronLeft, ChevronUp, Copy, Lock, MapPin, Plane } from "lucide-react";
+import { ChevronLeft, Lock, MapPin, Plane } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -9,7 +9,6 @@ import { useLivePromo } from "@/components/shop/live-price";
 import { ProductTile } from "@/components/shop/product-card";
 import { useClaimed } from "@/components/shop/promos";
 import { InfoButton } from "@/components/ui/info-button";
-import { Progress } from "@/components/ui/progress";
 import { useNow } from "@/hooks/use-now";
 import { type Station, statesOf } from "@/lib/catalog/stations";
 import { getStationId, setStationId } from "@/lib/station-store";
@@ -82,10 +81,6 @@ export function CheckoutView() {
   // Pay small small: the first payment the customer chose (₦).
   const [plan, setPlan] = useState(0);
   const [usePoints, setUsePoints] = useState(false);
-  const [mine, setMine] = useState(50_000);
-  const [others, setOthers] = useState<number[]>([]);
-  const [order, setOrder] = useState<string[]>([]);
-  const [copied, setCopied] = useState(false);
 
   const selected = items.filter((i) => i.selected);
   const totals = productTotals(selected);
@@ -130,37 +125,6 @@ export function CheckoutView() {
   const lineTotal = (i: (typeof selected)[number]) => {
     const l = quote.lines.find((x) => x.slug === i.slug && x.variantId === i.variantId);
     return (l ? l.unit : unitOf(i)) * i.qty;
-  };
-
-  // Group pay: contributions arrive live (simulated here until Supabase Realtime is connected).
-  useEffect(() => {
-    if (mode !== "group") return;
-    const feed = [15_000, 5_000, 20_000, 10_000, 3_000, 25_000];
-    let k = 0;
-    const id = setInterval(() => {
-      if (k < feed.length) setOthers((o) => [...o, feed[k++]]);
-    }, 2500);
-    return () => clearInterval(id);
-  }, [mode]);
-
-  const keys = selected.map((i) => i.key);
-  const ordered = [...order.filter((k) => keys.includes(k)), ...keys.filter((k) => !order.includes(k))];
-  const funded = Math.min(due, mine + others.reduce((a, b) => a + b, 0));
-  let pool = funded;
-  const allocation = ordered.map((key) => {
-    const it = selected.find((i) => i.key === key)!;
-    const price = lineTotal(it);
-    const got = Math.max(0, Math.min(price, pool));
-    pool -= got;
-    return { it, price, got, done: got >= price };
-  });
-  const paidCount = allocation.filter((a) => a.done).length;
-  const move = (i: number, d: number) => {
-    const o = [...ordered];
-    const j = i + d;
-    if (j < 0 || j >= o.length) return;
-    [o[i], o[j]] = [o[j], o[i]];
-    setOrder(o);
   };
 
   const stations = STATIONS.filter((s) => s.state === state);
