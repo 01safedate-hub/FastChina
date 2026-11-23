@@ -2,8 +2,19 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const projectUrl = Deno.env.get("SUPABASE_URL")!;
 const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const db = createClient(projectUrl,key,{auth:{persistSession:false,autoRefreshToken:false}});
-const site = (Deno.env.get("SITE_URL") || "https://fastchina.shop").replace(/\/$/,"");
-const go = (p:string) => Response.redirect(new URL(p,site),302);
+const configuredSite = Deno.env.get("SITE_URL") || "https://fastchina.shop";
+let siteOrigin = "https://fastchina.shop";
+try {
+  // Use only the configured site's origin. A SITE_URL containing a path must
+  // never turn the return route into a malformed nested URL.
+  siteOrigin = new URL(configuredSite).origin;
+} catch {
+  console.error("Invalid SITE_URL; falling back to canonical FastChina origin");
+}
+const go = (path: string) => {
+  const safePath = path.startsWith("/") ? path : `/${path}`;
+  return Response.redirect(new URL(safePath, siteOrigin), 302);
+};
 
 Deno.serve(async req => {
   const q = new URL(req.url).searchParams;
@@ -37,5 +48,12 @@ Deno.serve(async req => {
       if (o?.code) return go(`/track?code=${encodeURIComponent(o.code)}&payment=verified`);
     }
     return go("/store/seller/plan?payment=verified");
-  } catch { return go("/track?payment=pending"); }
+  } catch (error) {
+    console.error("Payment return verification failed", {
+      provider,
+      reference,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    return go("/track?payment=pending");
+  }
 });
