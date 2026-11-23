@@ -17,9 +17,11 @@ type GroupOrder = LinkProgress & {
 
 export function GroupOrdersList({ orders }: { orders: GroupOrder[] }) {
   const [items, setItems] = useState(orders);
-  const [copied, setCopied] = useState<string | null>(null);\n  const [now, setNow] = useState(0);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
+    const clock = window.setInterval(() => setNow(Date.now()), 1000);
     const timer = window.setInterval(async () => {
       if (document.visibilityState !== "visible") return;
       const refreshed = await Promise.all(orders.map(async (item) => {
