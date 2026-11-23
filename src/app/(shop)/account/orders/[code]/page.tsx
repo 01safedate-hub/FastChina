@@ -1,4 +1,4 @@
-import { ArrowLeft, Package, PackageCheck, CreditCard, CalendarDays } from "lucide-react";
+import { ArrowLeft, Package, CreditCard, CalendarDays } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -8,6 +8,7 @@ import { getMe } from "@/lib/data/me";
 import { naira } from "@/lib/format";
 import { trackingStep, type OrderStatus } from "@/lib/orders/lifecycle";
 import { SettingsShell } from "../../settings/ui";
+import { CancellationRequest } from "./cancellation-request";
 
 export const metadata: Metadata = { title: "Order details", robots: { index: false } };
 
@@ -32,6 +33,8 @@ async function Body({ params }: { params: PageProps<"/account/orders/[code]">["p
   const progress = trackingStep(order.status as OrderStatus);
   const fullyPaid = order.total_ngn > 0 && order.paid_ngn >= order.total_ngn;
   const terminal = ["cancelled", "refunded"].includes(order.status);
+  const cancellationEligible = ["awaiting_payment", "part_paid", "paid", "purchasing"].includes(order.status)
+    && !(order.pay_mode === "group" && order.paid_ngn > 0 && order.paid_ngn < order.total_ngn);
 
   return (
     <div className="flex flex-col gap-3">
@@ -49,7 +52,7 @@ async function Body({ params }: { params: PageProps<"/account/orders/[code]">["p
             </div>
           ))}
         </div>}
-        <Link href={`/track?code=${encodeURIComponent(order.code)}`} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-ink px-4 text-xs font-bold text-white"><PackageCheck size={15} /> Track shipment</Link>
+        {cancellationEligible && <div className="mt-4"><CancellationRequest code={order.code} request={order.cancellationRequest} /></div>}
       </section>
 
       <section className="rounded-xl border border-line bg-white p-4">
