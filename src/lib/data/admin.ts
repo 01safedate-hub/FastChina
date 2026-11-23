@@ -155,7 +155,7 @@ export async function listStores(q?: string): Promise<AdminStore[] | null> {
   return (data ?? []).map((s) => ({
     ...s, owner: email.get(s.owner_id) ?? null,
     products: (s.store_products as unknown as { count: number }[])[0]?.count ?? 0,
-    payouts: ((s.seller_payouts ?? []) as AdminStore["payouts"]).filter((p) => p.status !== "paid"),
+    payouts: ((s.seller_payouts ?? []) as AdminStore["payouts"]).filter((p) => p.status === "pending"),
     adjustments: ((s.seller_payout_adjustments ?? []) as { id: string; amount_ngn: number; created_at: string; seller_payout_adjustment_applications: { amount_ngn: number }[] }[])
       .map((a) => {
         const applied_ngn = a.seller_payout_adjustment_applications.reduce((sum, x) => sum + x.amount_ngn, 0);
