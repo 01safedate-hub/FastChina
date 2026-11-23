@@ -36,7 +36,7 @@ export function CheckoutView() {
   const params = useSearchParams();
   const initial = params.get("pay");
   const [mode, setMode] = useState<Mode>(initial === "small" || initial === "group" ? initial : "full");
-  const { items, remove } = useCart();
+  const { items } = useCart();
   const [phone, setPhone] = useState("");
   const [placing, startPlacing] = useTransition();
   const [placeMsg, setPlaceMsg] = useState<string | null>(null);
