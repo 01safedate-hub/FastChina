@@ -52,14 +52,14 @@ export function CancellationRequest({ code, request }: {
           <p className="mt-1 text-xs leading-relaxed text-muted">Under our <a href="/legal/terms" className="font-semibold underline">Terms</a>, you can request cancellation before FastChina buys the item from the factory. Our team checks the order stage before approving it. Submitting a request does not cancel the order immediately.</p>
           <p className="mt-1 text-xs leading-relaxed text-muted">If approved, the Refunds policy says paid amounts for signed-in customers are returned to the FastChina wallet straight away. See the <a href="/legal/refunds" className="font-semibold underline">Refunds policy</a>.</p>
           {!open ? (
-            <button type="button" onClick={() => setOpen(true)} className="mt-3 min-h-10 rounded-full border border-ink px-4 text-xs font-bold">Request cancellation</button>
+            <button type="button" onClick={() => setOpen(true)} className="mt-3 min-h-10 rounded-full bg-red-600 px-4 text-xs font-bold text-white transition-colors hover:bg-red-700">Request cancellation</button>
           ) : (
             <div className="mt-3 flex flex-col gap-2">
               <label htmlFor="cancellation-reason" className="text-xs font-bold">Why do you want to cancel?</label>
               <textarea id="cancellation-reason" value={reason} onChange={(e) => setReason(e.target.value)} minLength={10} maxLength={1000} rows={4} placeholder="Tell us why you want to cancel this order (at least 10 characters)." className="w-full rounded-lg border border-line p-3 text-sm outline-none focus:border-ink" />
               <p className="text-[11px] text-muted">{reason.trim().length}/1,000 characters</p>
               <div className="flex gap-2">
-                <button type="button" disabled={busy || reason.trim().length < 10} onClick={submit} className="min-h-10 rounded-full bg-ink px-4 text-xs font-bold text-white disabled:opacity-40">{busy ? "Submitting…" : "Submit request"}</button>
+                <button type="button" disabled={busy || reason.trim().length < 10} onClick={submit} className="min-h-10 rounded-full bg-red-600 px-4 text-xs font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-40">{busy ? "Submitting…" : "Submit request"}</button>
                 <button type="button" disabled={busy} onClick={() => setOpen(false)} className="min-h-10 px-3 text-xs font-bold text-muted">Keep order</button>
               </div>
             </div>
