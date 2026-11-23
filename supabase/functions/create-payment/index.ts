@@ -81,7 +81,7 @@ Deno.serve(async req => {
     const callback = new URL("/functions/v1/payment-return",url); callback.searchParams.set("provider",provider);
     try {
       const hosted = await initialize(provider,reference,amount,email,callback.toString(),description);
-      const {error:ue} = await db.from("payment_transactions").update({checkout_url:hosted.checkoutUrl,provider_transaction_id:hosted.transactionId}).eq("provider",provider).eq("reference",reference);
+      const {error:ue} = await db.from("payment_transactions").update({checkout_url:hosted.checkoutUrl}).eq("provider",provider).eq("reference",reference);
       if (ue) throw ue;
       return reply({ok:true,checkoutUrl:hosted.checkoutUrl,reference});
     } catch(e) {
