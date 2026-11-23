@@ -56,8 +56,9 @@ export function GroupOrdersList({ orders }: { orders: GroupOrder[] }) {
     <ul className="flex flex-col gap-3 px-3">
       {items.map((item) => {
         const remaining = Math.max(0, item.target - item.raised);
-        const expired = new Date(item.expires_at).getTime() <= Date.now() && remaining > 0;
-        const complete = remaining === 0;
+        const settled = item.settledAt !== null;
+        const expired = settled || (new Date(item.expires_at).getTime() <= Date.now() && remaining > 0);
+        const complete = remaining === 0 && !settled;
         const url = `/c/${encodeURIComponent(item.code)}`;
         return (
           <li key={item.code} className="rounded-xl border border-line bg-white p-4">
@@ -67,7 +68,7 @@ export function GroupOrdersList({ orders }: { orders: GroupOrder[] }) {
                 <Link href={`/account/orders/${encodeURIComponent(item.orderCode)}`} className="font-mono text-lg font-extrabold underline">#{item.orderCode}</Link>
                 <p className="mt-1 text-xs text-muted">Created {new Date(item.createdAt).toLocaleDateString("en-NG", { dateStyle: "medium", timeZone: "Africa/Lagos" })}</p>
               </div>
-              <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-bold">{complete ? "Fully funded" : expired ? "Expired" : "Collecting"}</span>
+              <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-bold">{expired ? "Expired" : complete ? "Fully funded" : "Collecting"}</span>
             </div>
             <div className="mt-4 flex items-baseline justify-between gap-2">
               <strong className="text-xl">{naira(item.raised)}</strong>
@@ -78,7 +79,7 @@ export function GroupOrdersList({ orders }: { orders: GroupOrder[] }) {
               <span className="flex items-center gap-1"><Users size={13} /> {item.people} contributors</span>
               <span>{complete ? "No balance remaining" : `${naira(remaining)} left`}</span>
             </div>
-            <p className="mt-2 text-xs text-muted">{item.items.filter((line) => line.funded).length} of {item.items.length} items marked funded · Link expires {new Date(item.expires_at).toLocaleDateString("en-NG", { dateStyle: "medium", timeZone: "Africa/Lagos" })}</p>
+            <p className="mt-2 text-xs text-muted">{item.items.filter((line) => line.funded).length} of {item.items.length} items marked funded · {expired ? "Closed" : "Link expires"} {new Date(item.expires_at).toLocaleDateString("en-NG", { dateStyle: "medium", timeZone: "Africa/Lagos" })}</p>
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button type="button" onClick={() => void copy(item.code)} className="flex min-h-11 items-center justify-center gap-2 rounded-md border border-line text-sm font-bold">
                 {copied === item.code ? <Check size={16} /> : <Copy size={16} />}{copied === item.code ? "Copied" : "Copy link"}
