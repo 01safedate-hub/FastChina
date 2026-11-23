@@ -20,6 +20,7 @@ export interface MyOrder {
   total_ngn: number;
   paid_ngn: number;
   created_at: string;
+  cancellationRequest: { status: "pending" | "approved" | "rejected"; reason: string; staff_note: string | null; created_at: string } | null;
   items: { id: string; title: string; variant_label: string | null; qty: number; customisable: boolean; custom: ItemCustom | null; customMoq: number | null; productSlug: string | null; imageUrl: string | null }[];
 }
 
@@ -81,7 +82,7 @@ export const getMe = cache(async (): Promise<Me | null> => {
     db.from("profiles").select("full_name, phone, role, station_id").eq("id", user.id).maybeSingle(),
     db.from("my_balances").select("wallet_ngn, points").maybeSingle(),
     db.from("wishlists").select("product_id", { count: "exact", head: true }),
-    db.from("orders").select("code, status, pay_mode, total_ngn, paid_ngn, created_at, order_items(id, title, variant_label, qty, product_skus(products(slug, customisable, custom_moq, main_images)), order_customisations(id, status, quote_ngn, staff_note, files))").order("created_at", { ascending: false }).limit(50),
+    db.from("orders").select("code, status, pay_mode, total_ngn, paid_ngn, created_at, order_items(id, title, variant_label, qty, product_skus(products(slug, customisable, custom_moq, main_images)), order_customisations(id, status, quote_ngn, staff_note, files)), order_cancellation_requests(status, reason, staff_note, created_at)").order("created_at", { ascending: false }).limit(50),
   ]);
   let avatarUrl: string | null = null;
   const avatarPath = user.user_metadata.avatar_path;
@@ -100,8 +101,9 @@ export const getMe = cache(async (): Promise<Me | null> => {
     station = data ?? null;
   }
   type RawItem = Omit<MyOrder["items"][number], "customisable" | "custom" | "customMoq" | "productSlug"> & { product_skus: { products: { slug: string; customisable: boolean; custom_moq: number | null; main_images: string[] | null } | null } | null; order_customisations: ItemCustom[] | ItemCustom | null };
-  const list = ((orders.data ?? []) as unknown as (Omit<MyOrder, "items"> & { order_items: RawItem[] })[]).map(({ order_items, ...o }) => ({
+  const list = ((orders.data ?? []) as unknown as (Omit<MyOrder, "items" | "cancellationRequest"> & { order_items: RawItem[]; order_cancellation_requests: NonNullable<MyOrder["cancellationRequest"]>[] })[]).map(({ order_items, order_cancellation_requests, ...o }) => ({
     ...o,
+    cancellationRequest: order_cancellation_requests?.[0] ?? null,
     items: (order_items ?? []).map(({ product_skus, order_customisations, ...i }) => ({
       ...i,
       customisable: product_skus?.products?.customisable === true,
