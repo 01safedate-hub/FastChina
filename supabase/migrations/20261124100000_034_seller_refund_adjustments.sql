@@ -61,12 +61,14 @@ declare
   v_net integer;
 begin
   for p in
-    select distinct sp.id, sp.status
-    from public.order_items i
-    join public.seller_payouts sp on sp.id = i.payout_id
-    where i.order_id = p_order
+    select sp.id, sp.status
+    from public.seller_payouts sp
+    where exists (
+      select 1 from public.order_items i
+      where i.order_id = p_order and i.payout_id = sp.id
+    )
     order by sp.id
-    for update of sp
+    for update
   loop
     if p.status = 'paid' then
       -- Preserve the historical payout; record a debit against future seller earnings.
