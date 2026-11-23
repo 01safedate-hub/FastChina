@@ -122,32 +122,19 @@ export async function getProductsByCategory(category: CategoryKey): Promise<Prod
 
   if (!hasSupabase) return sampleFallback();
 
-  // Do not join every product SKU while discovering a category. Fashion and other
-  // large categories can exceed Supabase's statement timeout when the full relation
-  // graph is selected during static generation.
+  // Discover a bounded set using only the category relation and product slug.
+  // SKU/pricing relations are hydrated separately for these selected products only.
   const { data: candidates, error: candidateError } = await publicDb()
     .from("products")
-    .select("slug, sale_count")
-    .eq("status", "active")
-    .eq("category_slug", category)
+    .select("slug, sale_count, categories!inner(slug)")
+    .in("status", ["active", "sold_out"])
+    .eq("categories.slug", category)
     .order("sale_count", { ascending: false })
     .order("slug", { ascending: true })
     .limit(36);
 
-  // Some deployments model category membership through the categories relation
-  // rather than a denormalized category_slug. Retry using the relation, still bounded.
-  let slugs = (candidates ?? []).map((row) => row.slug);
-  if (candidateError) {
-    const retry = await publicDb()
-      .from("products")
-      .select("slug, categories!inner(slug)")
-      .in("status", ["active", "sold_out"])
-      .eq("categories.slug", category)
-      .order("slug", { ascending: true })
-      .limit(36);
-    if (retry.error) return sampleFallback();
-    slugs = (retry.data ?? []).map((row) => row.slug);
-  }
+  if (candidateError) return sampleFallback();
+  const slugs = (candidates ?? []).map((row) => row.slug);
 
   if (!slugs.length) return candidateError ? sampleFallback() : [];
 
