@@ -7,6 +7,7 @@ const db = createClient(url, key, { auth: { persistSession: false, autoRefreshTo
 const normalizePhone = (v: unknown) => { const d = typeof v === "string" ? v.replace(/\D/g, "") : ""; return d.startsWith("234") ? `+${d}` : d.startsWith("0") ? `+234${d.slice(1)}` : ""; };
 const validEmail = (v: unknown): v is string => typeof v === "string" && v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
+const attempts = new Map<string, { count: number; start: number }>();
 async function initialize(provider: "paystack"|"flutterwave", reference: string, amount: number, email: string, callback: string, description: string) {
   if (provider === "paystack") {
     const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
@@ -27,6 +28,12 @@ async function initialize(provider: "paystack"|"flutterwave", reference: string,
 Deno.serve(async req => {
   if (req.method === "OPTIONS") return new Response("ok", {headers});
   if (req.method !== "POST") return reply({ok:false,message:"Method not allowed."},405);
+  const ip = (req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown").split(",")[0].trim();
+  const now = Date.now();
+  const bucket = attempts.get(ip);
+  if (!bucket || now - bucket.start > 600000) attempts.set(ip, { count: 1, start: now });
+  else if (bucket.count >= 12) return reply({ok:false,message:"Too many payment attempts. Please wait and try again."},429);
+  else bucket.count += 1;
   try {
     const b = await req.json();
     const provider = b.provider;
