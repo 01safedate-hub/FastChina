@@ -24,6 +24,7 @@ Deno.serve(async req => {
   const transactionId = q.get("transaction_id");
   if ((provider !== "paystack" && provider !== "flutterwave") || !reference) return confirmation("unverified");
   let orderCode: string | undefined;
+  let paymentKind: "order" | "subscription" = "order";
   try {
     const {data:p,error} = await db.from("payment_transactions").select("purpose,amount_ngn,order_id,status").eq("provider",provider).eq("reference",reference).maybeSingle();
     if (error || !p) return confirmation("unverified");
