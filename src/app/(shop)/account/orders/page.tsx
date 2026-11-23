@@ -72,7 +72,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/account/orders
                 <span className="text-muted">{PAY[o.pay_mode] ?? o.pay_mode} · {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Lagos" })}</span>
                 <span className="flex items-center gap-3">
                   <strong>{naira(o.total_ngn)}</strong>
-                  <Link href={`/track?code=${o.code}`} className="rounded-full border border-ink px-3 py-1.5 text-[12px] font-bold">Track</Link>
+                  <Link href={`/account/orders/${encodeURIComponent(o.code)}`} className="rounded-full border border-ink px-3 py-1.5 text-[12px] font-bold">Details</Link><Link href={`/track?code=${o.code}`} className="rounded-full border border-ink px-3 py-1.5 text-[12px] font-bold">Track</Link>
                 </span>
               </div>
               {o.paid_ngn < o.total_ngn && !["cancelled", "refunded"].includes(o.status) && (
