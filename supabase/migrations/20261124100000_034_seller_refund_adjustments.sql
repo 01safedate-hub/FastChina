@@ -80,9 +80,8 @@ begin
       on conflict (order_item_id) do nothing;
     else
       -- Failed or pending transfers were not settled: release every item in the batch.
-      update public.order_items set payout_id = null where payout_id = p.id;
-
       if p.status = 'pending' then
+        update public.order_items set payout_id = null where order_id = p_order and payout_id = p.id;
         select coalesce(sum(e.net_ngn), 0), count(*)::integer
           into v_amount, v_items
         from public.store_earnings_all e
@@ -92,8 +91,11 @@ begin
         if v_amount >= 1000 and v_items > 0 then
           update public.seller_payouts set amount_ngn = v_amount::integer, items = v_items where id = p.id and status = 'pending';
         else
+          update public.order_items set payout_id = null where payout_id = p.id;
           update public.seller_payouts set status = 'failed' where id = p.id and status = 'pending';
         end if;
+      else
+        update public.order_items set payout_id = null where payout_id = p.id;
       end if;
     end if;
   end loop;
@@ -145,6 +147,7 @@ declare
   v_apply bigint;
   v_left bigint;
   v_count int;
+  v_net bigint;
   v_payout uuid;
   v_locked int;
   n int := 0;
@@ -208,12 +211,12 @@ begin
     -- Apply the offset with immutable application rows; remaining balances stay outstanding.
     v_left := v_apply;
     for v_adj in
-      select a.id, a.amount_ngn - coalesce(sum(ap.amount_ngn), 0) as outstanding
+      select a.id, a.amount_ngn - coalesce((
+        select sum(ap.amount_ngn) from public.seller_payout_adjustment_applications ap where ap.adjustment_id = a.id
+      ), 0) as outstanding
       from public.seller_payout_adjustments a
-      left join public.seller_payout_adjustment_applications ap on ap.adjustment_id = a.id
       where a.store_id = s.id
-      group by a.id, a.amount_ngn, a.created_at
-      having a.amount_ngn - coalesce(sum(ap.amount_ngn), 0) > 0
+        and a.amount_ngn > coalesce((select sum(ap.amount_ngn) from public.seller_payout_adjustment_applications ap where ap.adjustment_id = a.id), 0)
       order by a.created_at, a.id
       for update of a
     loop
@@ -242,7 +245,6 @@ declare
   v_amount bigint;
   v_count integer;
 begin
-  if not public.is_staff() then raise exception 'Staff only' using errcode = 'insufficient_privilege'; end if;
   if nullif(trim(p_reference), '') is null then raise exception 'Transfer reference required'; end if;
   select * into p from public.seller_payouts where id = p_payout for update;
   if p.id is null or p.status <> 'pending' then return false; end if;
