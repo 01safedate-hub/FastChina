@@ -1,4 +1,4 @@
-import { ArrowLeft, Package, PackageCheck, CreditCard, CalendarDays, MapPin } from "lucide-react";
+import { ArrowLeft, Package, PackageCheck, CreditCard, CalendarDays } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
