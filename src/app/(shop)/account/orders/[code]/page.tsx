@@ -56,7 +56,13 @@ async function Body({ params }: { params: PageProps<"/account/orders/[code]">["p
         <h2 className="mb-3 flex items-center gap-2 text-sm font-extrabold"><Package size={17} /> Items in this order</h2>
         <ul className="divide-y divide-line">
           {order.items.map((item) => (
-            <li key={item.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+            <li key={item.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+              {item.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- product image URL is read from the trusted catalogue record
+                <img src={item.imageUrl} alt={item.title} loading="lazy" className="size-20 shrink-0 rounded-lg border border-line bg-surface object-contain" />
+              ) : (
+                <div aria-hidden className="flex size-20 shrink-0 items-center justify-center rounded-lg bg-surface text-muted"><Package size={25} /></div>
+              )}
               <div className="min-w-0"><p className="text-sm font-semibold">{item.title}</p>{item.variant_label && <p className="mt-0.5 text-xs text-muted">{item.variant_label}</p>}<p className="mt-1 text-xs text-muted">Quantity: {item.qty}</p></div>
             </li>
           ))}
