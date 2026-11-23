@@ -414,7 +414,11 @@ export function CheckoutView() {
                 try {
                   sessionStorage.setItem(`fc-track-${r.code}`, phone.replace(/\D/g, "").slice(-4));
                 } catch {}
-                for (const i of selected) remove(i.key);
+                // Keep the cart intact while the customer is on the provider's payment page.
+                // The cart is cleared only after the verified return reaches order tracking.
+                try {
+                  sessionStorage.setItem(`fc-pending-cart-${r.code}`, JSON.stringify(selected.map((i) => i.key)));
+                } catch {}
                 window.location.assign(payment.checkoutUrl);
               })
             }
