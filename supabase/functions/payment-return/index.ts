@@ -24,11 +24,16 @@ Deno.serve(async req => {
   const transactionId = q.get("transaction_id");
   if ((provider !== "paystack" && provider !== "flutterwave") || !reference) return confirmation("unverified");
   let orderCode: string | undefined;
-  let paymentKind: "order" | "subscription" = "order";
+  let paymentKind: "order" | "subscription" | "group" = "order";
+  let groupCode: string | undefined;
   try {
-    const {data:p,error} = await db.from("payment_transactions").select("purpose,amount_ngn,order_id,status").eq("provider",provider).eq("reference",reference).maybeSingle();
+    const {data:p,error} = await db.from("payment_transactions").select("purpose,amount_ngn,order_id,group_link_id,status").eq("provider",provider).eq("reference",reference).maybeSingle();
     if (error || !p) return confirmation("unverified");
-    paymentKind = p.purpose === "seller_subscription" ? "subscription" : "order";
+    paymentKind = p.purpose === "seller_subscription" ? "subscription" : p.purpose === "group_contribution" ? "group" : "order";
+    if (p.purpose === "group_contribution" && p.group_link_id) {
+      const {data:l} = await db.from("group_links").select("code").eq("id",p.group_link_id).maybeSingle();
+      groupCode = l?.code ?? undefined;
+    }
     if (p.purpose === "order" && p.order_id) {
       const {data:o} = await db.from("orders").select("code").eq("id",p.order_id).maybeSingle();
       orderCode = o?.code ?? undefined;
@@ -51,9 +56,11 @@ Deno.serve(async req => {
       const {error:re} = await db.rpc("record_verified_payment",{p_provider:provider,p_reference:reference,p_provider_transaction_id:String(v.id),p_amount_ngn:amount,p_currency:"NGN",p_payload:v});
       if (re) throw re;
     }
+    if (paymentKind === "group" && groupCode) return go(`/c/${encodeURIComponent(groupCode)}?contribution=success`);
     return confirmation("success", orderCode, paymentKind);
   } catch (error) {
     console.error("Payment return verification failed", {provider, reference, reason:error instanceof Error ? error.message : String(error)});
+    if (paymentKind === "group" && groupCode) return go(`/c/${encodeURIComponent(groupCode)}?contribution=pending`);
     return confirmation("pending", orderCode, paymentKind);
   }
 });
