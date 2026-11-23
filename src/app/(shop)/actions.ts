@@ -161,6 +161,25 @@ function normalisePhone(raw: unknown): string | null {
 }
 
 /**
+ * Returns only the payment destination for a confirmation page. It deliberately exposes no
+ * customer, address, phone, or item data, so a lost browser session does not block order routing.
+ */
+export async function getOrderPaymentDestination(code: unknown): Promise<{ ok: true; paid: boolean } | { ok: false }> {
+  if (typeof code !== "string" || !/^[A-Za-z0-9]{8}$/.test(code.trim())) return { ok: false };
+  if (!(await allow("payment-status", 20, 600))) return { ok: false };
+  if (!hasSupabase) return { ok: false };
+  const { data, error } = await secretDb()
+    .from("orders")
+    .select("paid_ngn, total_ngn")
+    .eq("code", code.trim().toUpperCase())
+    .maybeSingle();
+  if (error || !data) return { ok: false };
+  const total = Number(data.total_ngn);
+  const paid = Number(data.paid_ngn);
+  return { ok: true, paid: total > 0 && paid >= total };
+}
+
+/**
  * Places an order. Everything is re-priced here; the browser only says what's in the cart.
  * Coupons and points are checked again by the database when the order is saved. Payment is taken next (Flutterwave).
  */
