@@ -9,11 +9,13 @@ import { type LinkProgress, linkProgress } from "../../actions";
 
 /** Live progress for a real Group pay link. Refreshes every 10 seconds while the page is open. */
 export function LiveLink({ code, initial }: { code: string; initial: LinkProgress }) {
-  const [p, setP] = useState(initial);\n  const [now, setNow] = useState(0);
+  const [p, setP] = useState(initial);
+  const [now, setNow] = useState(0);
   const [amount, setAmount] = useState(""); const [name, setName] = useState(""); const [email, setEmail] = useState("");
   const [provider, setProvider] = useState<"paystack" | "flutterwave">("paystack"); const [message, setMessage] = useState(""); const [busy, start] = useTransition();
   useEffect(() => {
-    const clock = setInterval(() => setNow(Date.now()), 1000);\n    const t = setInterval(async () => {
+    const clock = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(async () => {
       if (document.visibilityState !== "visible") return;
       const next = await linkProgress(code).catch(() => null);
       if (next) setP(next);
