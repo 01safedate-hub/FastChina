@@ -33,8 +33,7 @@ async function Body({ params }: { params: PageProps<"/account/orders/[code]">["p
   const progress = trackingStep(order.status as OrderStatus);
   const fullyPaid = order.total_ngn > 0 && order.paid_ngn >= order.total_ngn;
   const terminal = ["cancelled", "refunded"].includes(order.status);
-  const cancellationEligible = ["awaiting_payment", "part_paid", "paid", "purchasing"].includes(order.status)
-    && !(order.pay_mode === "group" && order.paid_ngn > 0 && order.paid_ngn < order.total_ngn);
+  const cancellationEligible = fullyPaid && ["paid", "purchasing"].includes(order.status);
 
   return (
     <div className="flex flex-col gap-3">
@@ -77,7 +76,7 @@ async function Body({ params }: { params: PageProps<"/account/orders/[code]">["p
         <div className="flex justify-between py-1.5 text-sm"><span className="text-muted">Order total</span><strong>{naira(order.total_ngn)}</strong></div>
         <div className="flex justify-between py-1.5 text-sm"><span className="text-muted">Amount paid</span><strong className="text-success">{naira(order.paid_ngn)}</strong></div>
         <div className="flex justify-between border-t border-line pt-3 mt-2 text-sm"><span className="font-semibold">{fullyPaid ? "Payment status" : "Remaining balance"}</span><strong>{fullyPaid ? "Fully paid" : naira(Math.max(0, order.total_ngn - order.paid_ngn))}</strong></div>
-        {!fullyPaid && !terminal && <Link href={`/account/orders?tab=unpaid`} className="mt-3 flex min-h-11 items-center justify-center rounded-md bg-ink px-4 text-sm font-bold text-white">View unpaid orders</Link>}
+        {!fullyPaid && !terminal && <Link href="/account/orders?tab=unpaid" className="mt-3 flex min-h-11 items-center justify-center rounded-md bg-ink px-4 text-sm font-bold text-white">Continue payment</Link>}
       </section>
       {cancellationEligible && <CancellationRequest code={order.code} request={order.cancellationRequest} />}
       <Link href="/account/orders" className="inline-flex min-h-10 items-center gap-2 self-start px-1 text-sm font-semibold text-muted"><ArrowLeft size={15} /> Back to my orders</Link>
