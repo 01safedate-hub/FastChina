@@ -28,7 +28,7 @@ async function GroupOrdersBody() {
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) {
-    return <p className="rounded-xl border border-line bg-white p-4 text-sm text-muted">We couldn't load your Group Pay orders. Please refresh in a moment.</p>;
+    return <p className="rounded-xl border border-line bg-white p-4 text-sm text-muted">We couldn&apos;t load your Group Pay orders. Please refresh in a moment.</p>;
   }
   const links = await Promise.all((data ?? []).map(async (row) => {
     const order = Array.isArray(row.orders) ? row.orders[0] : row.orders;
