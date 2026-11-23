@@ -8,6 +8,17 @@ const normalizePhone = (v: unknown) => { const d = typeof v === "string" ? v.rep
 const validEmail = (v: unknown): v is string => typeof v === "string" && v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
 const attempts = new Map<string, { count: number; start: number }>();
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function flutterwavePayloadHash(amount: number, email: string, reference: string, secret: string): Promise<string> {
+  // Flutterwave Checkout checksum: amount + currency + customer_email + tx_ref + SHA256(secret key).
+  const hashedSecret = await sha256Hex(secret);
+  return sha256Hex(`${amount}NGN${email}${reference}${hashedSecret}`);
+}
 async function initialize(provider: "paystack"|"flutterwave", reference: string, amount: number, email: string, callback: string, description: string) {
   if (provider === "paystack") {
     const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
@@ -19,7 +30,7 @@ async function initialize(provider: "paystack"|"flutterwave", reference: string,
   }
   const secret = Deno.env.get("FLUTTERWAVE_SECRET_KEY");
   if (!secret) throw new Error("Flutterwave is not configured in Supabase Secrets.");
-  const r = await fetch("https://api.flutterwave.com/v3/payments", { method:"POST", headers:{ Authorization:`Bearer ${secret}`, "Content-Type":"application/json" }, body:JSON.stringify({ tx_ref:reference, amount, currency:"NGN", redirect_url:callback, customer:{email}, customizations:{title:"FastChina",description} }) });
+  const payloadHash = await flutterwavePayloadHash(amount, email, reference, secret);\n  const r = await fetch("https://api.flutterwave.com/v3/payments", { method:"POST", headers:{ Authorization:`Bearer ${secret}`, "Content-Type":"application/json" }, body:JSON.stringify({ tx_ref:reference, amount, currency:"NGN", redirect_url:callback, customer:{email}, payload_hash:payloadHash, customizations:{title:"FastChina",description} }) });
   const j = await r.json();
   if (!r.ok || j.status !== "success" || typeof j.data?.link !== "string") throw new Error("Flutterwave could not start checkout.");
   return { checkoutUrl:j.data.link, transactionId:null };
