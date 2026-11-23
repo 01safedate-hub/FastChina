@@ -33,7 +33,7 @@ Deno.serve(async req => {
         const j = await r.json(); if (!r.ok || j.status !== true || j.data?.status !== "success") throw new Error("Payment not verified");
         v = j.data; if (v.reference !== reference || v.currency !== "NGN" || Number(v.amount) !== Number(p.amount_ngn)*100) throw new Error("Payment mismatch");
       } else {
-        const secret = Deno.env.get("FLUTTERWAVE_SECRET_KEY"); if (!secret || !transactionId || !/^\\d+$/.test(transactionId)) throw new Error("Invalid Flutterwave return");
+        const secret = Deno.env.get("FLUTTERWAVE_SECRET_KEY"); if (!secret || !transactionId || !/^\d+$/.test(transactionId)) throw new Error("Invalid Flutterwave return");
         const r = await fetch(`https://api.flutterwave.com/v3/transactions/${encodeURIComponent(transactionId)}/verify`,{headers:{Authorization:`Bearer ${secret}`}});
         const j = await r.json(); if (!r.ok || j.status !== "success" || j.data?.status !== "successful") throw new Error("Payment not verified");
         v = j.data; if (v.tx_ref !== reference || v.currency !== "NGN") throw new Error("Payment mismatch");
