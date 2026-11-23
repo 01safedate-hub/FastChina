@@ -9,20 +9,20 @@ import { type LinkProgress, linkProgress } from "../../actions";
 
 /** Live progress for a real Group pay link. Refreshes every 10 seconds while the page is open. */
 export function LiveLink({ code, initial }: { code: string; initial: LinkProgress }) {
-  const [p, setP] = useState(initial);
+  const [p, setP] = useState(initial);\n  const [now, setNow] = useState(0);
   const [amount, setAmount] = useState(""); const [name, setName] = useState(""); const [email, setEmail] = useState("");
   const [provider, setProvider] = useState<"paystack" | "flutterwave">("paystack"); const [message, setMessage] = useState(""); const [busy, start] = useTransition();
   useEffect(() => {
-    const t = setInterval(async () => {
+    const clock = setInterval(() => setNow(Date.now()), 1000);\n    const t = setInterval(async () => {
       if (document.visibilityState !== "visible") return;
       const next = await linkProgress(code).catch(() => null);
       if (next) setP(next);
     }, 10_000);
-    return () => clearInterval(t);
+    return () => { clearInterval(t); clearInterval(clock); };
   }, [code]);
   const left = p.target - p.raised;
   // Links stay open until the order is fully paid.
-  const closed = left <= 0 || new Date(p.expires_at).getTime() <= Date.now();
+  const closed = left <= 0 || new Date(p.expires_at).getTime() <= now;
   const validAmount = Number.isSafeInteger(Number(amount)) && Number(amount) >= 500 && Number(amount) <= left;
   const submit = () => start(async () => { setMessage(""); const result = await startGroupContribution({ code, amountNgn: Number(amount), email, contributorName: name, provider }); if (!result.ok) return setMessage(result.message); window.location.assign(result.checkoutUrl); });
   return (
