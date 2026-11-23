@@ -162,14 +162,223 @@ export async function getCategoryPhotoProducts(): Promise<CategoryPhotoProduct[]
     slug: string; title: string; main_images: string[] | null; sale_count: number;
     wholesale: boolean | null; categories: { slug: string } | null;
   };
-  return ((data ?? []) as unknown as PhotoRow[]).map((r) => ({
-    slug: r.slug,
-    name: r.title,
-    category: (r.categories?.slug ?? "home") as CategoryKey,
-    images: r.main_images ?? [],
-    sold: r.sale_count,
-    wholesale: r.wholesale ?? false,
+  return ((data ?? []) as unknown as PhotoRow[]).map((row) => ({
+    slug: row.slug,
+    name: row.title,
+    category: (row.categories?.slug ?? "home") as CategoryKey,
+    images: row.main_images ?? [],
+    sold: row.sale_count ?? 0,
+    wholesale: row.wholesale === true,
   }));
+}
+
+/** Hydrate only the products needed for the currently selected category cards. */
+export async function getProductsBySlugs(slugs: string[]): Promise<Product[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("catalog");
+  const uniqueSlugs = [...new Set(slugs)].slice(0, 10);
+  if (!uniqueSlugs.length) return [];
+  if (!hasSupabase) {
+    const bySlug = new Map(SAMPLE_PRODUCTS.map((sample) => {
+      const product = sampleToProduct(sample);
+      return [product.slug, product] as const;
+    }));
+    return uniqueSlugs.flatMap((slug) => {
+      const product = bySlug.get(slug);
+      return product ? [product] : [];
+    });
+  }
+
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .in("slug", uniqueSlugs);
+  if (error) throw new Error(`Category products: ${error.message}`);
+
+  const bySlug = new Map(
+    ((data ?? []) as unknown as Row[])
+      .map(rowToProduct)
+      .filter((product): product is Product => product !== null)
+      .map((product) => [product.slug, product]),
+  );
+  return uniqueSlugs.flatMap((slug) => {
+    const product = bySlug.get(slug);
+    return product ? [product] : [];
+  });
+}
+
+/** A bounded product set for homepage merchandising modules. */
+export async function getHomeProducts(): Promise<Product[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("catalog");
+  if (!hasSupabase) return SAMPLE_PRODUCTS.map(sampleToProduct);
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    // Homepage modules need a compact merchandising sample, not 120 full product
+    // records with every SKU relation. The main feed is loaded separately in pages.
+    .limit(24);
+  if (error) throw new Error(`Homepage catalogue: ${error.message}`);
+  return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
+}
+
+/** Bounded wholesale catalogue: filter eligible products in the database before loading SKU details. */
+export async function getWholesaleProducts(): Promise<Product[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("catalog");
+  if (!hasSupabase) {
+    return SAMPLE_PRODUCTS.map(sampleToProduct).filter((p) => p.wholesale && p.wholesaleFrom > 0 && Number.isFinite(p.wholesaleFrom));
+  }
+  const wholesaleColumns = PRODUCT_COLUMNS.replace("product_skus(", "product_skus!inner(");
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(wholesaleColumns)
+    .eq("wholesale", true)
+    .eq("product_skus.active", true)
+    .gt("product_skus.price_wholesale", 0)
+    .in("status", ["active", "sold_out"])
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(120);
+  if (error) throw new Error(`Wholesale catalogue: ${error.message}`);
+  return ((data ?? []) as unknown as Row[])
+    .map(rowToProduct)
+    .filter((p): p is Product => p !== null && p.wholesale && p.wholesaleFrom > 0 && Number.isFinite(p.wholesaleFrom));
+}
+
+/** Bounded related-product candidates; the page prioritises the current product's category. */
+export async function getRelatedProducts(slug: string): Promise<Product[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("catalog");
+  if (!hasSupabase) return SAMPLE_PRODUCTS.map(sampleToProduct).filter((p) => p.slug !== slug);
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .neq("slug", slug)
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    // Keep prerender work bounded; the product page only needs a small related strip.
+    .limit(12);
+  if (error) throw new Error(`Related catalogue: ${error.message}`);
+  return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
+}
+
+export interface ProductFeedPage {
+  products: Product[];
+  nextCursor: string | null;
+}
+
+/**
+ * A stable, server-backed catalogue page. The cursor uses sale_count + slug so products
+ * with the same sales count have a deterministic order and are not repeated between pages.
+ */
+export async function getProductFeedPage(cursor?: string | null, pageSize = 12): Promise<ProductFeedPage> {
+  const size = Math.min(24, Math.max(1, Math.floor(pageSize)));
+  const parsed = cursor ? /^(\d+):([a-z0-9-]+)$/.exec(cursor) : null;
+  if (cursor && !parsed) throw new Error("Invalid catalogue cursor");
+
+  if (!hasSupabase) {
+    const all = SAMPLE_PRODUCTS.map(sampleToProduct).sort((a, b) => b.sold - a.sold || a.slug.localeCompare(b.slug));
+    const remaining = parsed
+      ? all.filter((p) => p.sold < Number(parsed[1]) || (p.sold === Number(parsed[1]) && p.slug > parsed[2]))
+      : all;
+    const page = remaining.slice(0, size + 1);
+    const hasMore = page.length > size;
+    const products = page.slice(0, size);
+    const last = products[products.length - 1];
+    return {
+      products,
+      nextCursor: hasMore && last ? `${last.sold}:${last.slug}` : null,
+    };
+  }
+
+  let query = publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(size + 1);
+
+  if (parsed) {
+    const sold = Number(parsed[1]);
+    const slug = parsed[2];
+    query = query.or(`sale_count.lt.${sold},and(sale_count.eq.${sold},slug.gt.${slug})`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(`Catalogue feed: ${error.message}`);
+  const rows = ((data ?? []) as unknown as Row[]);
+  const hasMore = rows.length > size;
+  const products = rows.slice(0, size).map(rowToProduct).filter((p): p is Product => p !== null);
+  const last = rows[Math.min(size, rows.length) - 1];
+  return {
+    products,
+    nextCursor: hasMore && last ? `${last.sale_count}:${last.slug}` : null,
+  };
+}
+
+/**
+ * Cursor-paginated related catalogue for product pages. The current product is
+ * excluded on every page and sale_count + slug keeps pagination deterministic.
+ */
+export async function getRelatedProductsPage(
+  currentSlug: string,
+  cursor?: string | null,
+  pageSize = 12,
+): Promise<ProductFeedPage> {
+  const size = Math.min(24, Math.max(1, Math.floor(pageSize)));
+  const parsed = cursor ? /^(\d+):([a-z0-9-]+)$/.exec(cursor) : null;
+  if (cursor && !parsed) throw new Error("Invalid related catalogue cursor");
+
+  if (!hasSupabase) {
+    const all = SAMPLE_PRODUCTS.map(sampleToProduct)
+      .filter((product) => product.slug !== currentSlug)
+      .sort((a, b) => b.sold - a.sold || a.slug.localeCompare(b.slug));
+    const remaining = parsed
+      ? all.filter((product) => product.sold < Number(parsed[1]) || (product.sold === Number(parsed[1]) && product.slug > parsed[2]))
+      : all;
+    const page = remaining.slice(0, size + 1);
+    const hasMore = page.length > size;
+    const products = page.slice(0, size);
+    const last = products[products.length - 1];
+    return { products, nextCursor: hasMore && last ? `${last.sold}:${last.slug}` : null };
+  }
+
+  let query = publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .neq("slug", currentSlug)
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(size + 1);
+
+  if (parsed) {
+    const sold = Number(parsed[1]);
+    const slug = parsed[2];
+    query = query.or(`sale_count.lt.${sold},and(sale_count.eq.${sold},slug.gt.${slug})`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(`Related catalogue: ${error.message}`);
+  const rows = (data ?? []) as unknown as Row[];
+  const hasMore = rows.length > size;
+  const products = rows.slice(0, size).map(rowToProduct).filter((product): product is Product => product !== null);
+  const last = rows[Math.min(size, rows.length) - 1];
+  return {
+    products,
+    nextCursor: hasMore && last ? `${last.sale_count}:${last.slug}` : null,
+  };
 }
 
 export async function getProduct(slug: string): Promise<Product | null> {
@@ -186,7 +395,42 @@ export async function getProduct(slug: string): Promise<Product | null> {
 }
 
 export async function getProductSlugs(): Promise<string[]> {
-  return (await getProducts()).map((p) => p.slug);
+  if (!hasSupabase) return SAMPLE_PRODUCTS.map((p) => p.slug);
+
+  // Static generation only needs representative routes, not the full catalogue graph.
+  const { data, error } = await publicDb()
+    .from("products")
+    .select("slug")
+    .in("status", ["active", "sold_out"])
+    // Static params are only a small prerender sample. Avoid sorting the entire
+    // live catalogue during Netlify's build-time page-data collection.
+    .limit(24);
+
+  if (error) throw new Error(`Product slugs: ${error.message}`);
+  return (data ?? []).map((row) => row.slug);
+}
+
+/** Wholesale route params need only slug and wholesale eligibility, not full product details. */
+export async function getWholesaleProductSlugs(): Promise<string[]> {
+  if (!hasSupabase) {
+    return SAMPLE_PRODUCTS.map(sampleToProduct)
+      .filter((p) => p.wholesale && p.wholesaleFrom > 0 && Number.isFinite(p.wholesaleFrom))
+      .map((p) => p.slug);
+  }
+
+  // Static generation needs only a small set of candidate paths. Avoid joining
+  // categories and product_skus here: those relations can make build-time queries
+  // exceed Supabase's statement timeout on a large catalogue.
+  const { data, error } = await publicDb()
+    .from("products")
+    .select("slug")
+    .eq("wholesale", true)
+    .in("status", ["active", "sold_out"])
+    // Static params need only a bounded sample, not a full-catalogue sort.
+    .limit(24);
+
+  if (error) throw new Error(`Wholesale product slugs: ${error.message}`);
+  return (data ?? []).map((row) => row.slug);
 }
 
 export interface LineRequest {
@@ -256,9 +500,124 @@ export async function getQuestions(slug: string): Promise<QA[] | null> {
 /** Ranked product slugs for a search, or null when search must run in the browser (no database). */
 export async function searchSlugs(q: string): Promise<string[] | null> {
   if (!hasSupabase) return null;
-  const { data, error } = await publicDb().rpc("search_products", { q, lim: 120 });
+  const { data, error } = await publicDb().rpc("search_products", { q, lim: 200 });
   if (error) throw new Error(`Search: ${error.message}`);
   return ((data ?? []) as { slug: string }[]).map((r) => r.slug);
+}
+
+/**
+ * Search results are hydrated a page at a time. The existing search_products RPC ranks
+ * up to 120 slugs; this keeps the RPC unchanged while avoiding a full-catalogue page load.
+ */
+export async function getSearchProductsPage(q: string, offset = 0, pageSize = 24): Promise<ProductFeedPage> {
+  const size = Math.min(24, Math.max(1, Math.floor(pageSize)));
+  const start = Math.max(0, Math.floor(offset));
+  const term = q.trim().slice(0, 120);
+  if (term.length < 2) return { products: [], nextCursor: null };
+
+  if (!hasSupabase) {
+    const words = term.toLowerCase().split(/\s+/).filter((word) => word.length > 1);
+    const matches = SAMPLE_PRODUCTS.map(sampleToProduct).filter((p) =>
+      words.some((word) => `${p.name} ${p.category} ${p.description}`.toLowerCase().includes(word.replace(/s$/, ""))),
+    );
+    const page = matches.slice(start, start + size + 1);
+    return {
+      products: page.slice(0, size),
+      nextCursor: page.length > size ? String(start + size) : null,
+    };
+  }
+
+  const rankedSlugs = (await searchSlugs(term)) ?? [];
+  const pageSlugs = rankedSlugs.slice(start, start + size);
+  if (!pageSlugs.length) return { products: [], nextCursor: null };
+
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .in("slug", pageSlugs);
+  if (error) throw new Error(`Search results: ${error.message}`);
+
+  const bySlug = new Map(
+    ((data ?? []) as unknown as Row[])
+      .map(rowToProduct)
+      .filter((product): product is Product => product !== null)
+      .map((product) => [product.slug, product]),
+  );
+  const products = pageSlugs.flatMap((slug) => {
+    const product = bySlug.get(slug);
+    return product ? [product] : [];
+  });
+  const nextOffset = start + pageSlugs.length;
+  return { products, nextCursor: nextOffset < rankedSlugs.length ? String(nextOffset) : null };
+}
+
+/**
+ * Products ranked by purchased quantities in paid orders. If no qualifying order
+ * items exist yet, fall back to the catalogue's accumulated sale_count ranking.
+ */
+export async function getHotSearchProducts(): Promise<Product[]> {
+  if (!hasSupabase) {
+    return SAMPLE_PRODUCTS.map(sampleToProduct).sort((a, b) => b.sold - a.sold).slice(0, 9);
+  }
+
+  const { data: orderItems, error: orderError } = await publicDb()
+    .from("order_items")
+    .select("qty, removed_at, orders!inner(paid_at, status), product_skus!inner(products!inner(slug))")
+    .is("removed_at", null)
+    .not("orders.paid_at", "is", null)
+    .not("orders.status", "in", '("cancelled","refunded")');
+
+  if (orderError) throw new Error(`Search hot list orders: ${orderError.message}`);
+
+  type PurchasedItem = {
+    qty: number;
+    product_skus: { products: { slug: string } | null } | null;
+  };
+  const quantities = new Map<string, number>();
+  for (const item of (orderItems ?? []) as unknown as PurchasedItem[]) {
+    const slug = item.product_skus?.products?.slug;
+    if (slug) quantities.set(slug, (quantities.get(slug) ?? 0) + Math.max(0, Number(item.qty) || 0));
+  }
+
+  let rankedSlugs = [...quantities.entries()]
+    .filter(([, quantity]) => quantity > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 9)
+    .map(([slug]) => slug);
+
+  // A new store may not have any paid orders yet. In that case use lifetime sales.
+  if (!rankedSlugs.length) {
+    const { data, error } = await publicDb()
+      .from("products")
+      .select("slug")
+      .in("status", ["active", "sold_out"])
+      .order("sale_count", { ascending: false })
+      .order("slug", { ascending: true })
+      .limit(9);
+    if (error) throw new Error(`Search hot list fallback: ${error.message}`);
+    rankedSlugs = (data ?? []).map((product) => product.slug);
+  }
+
+  if (!rankedSlugs.length) return [];
+
+  const { data, error } = await publicDb()
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .in("status", ["active", "sold_out"])
+    .in("slug", rankedSlugs);
+  if (error) throw new Error(`Search hot list products: ${error.message}`);
+
+  const bySlug = new Map(
+    ((data ?? []) as unknown as Row[])
+      .map(rowToProduct)
+      .filter((product): product is Product => product !== null)
+      .map((product) => [product.slug, product]),
+  );
+  return rankedSlugs.flatMap((slug) => {
+    const product = bySlug.get(slug);
+    return product ? [product] : [];
+  });
 }
 
 /** Saves a new question as pending; staff answer it in admin. Server-only (uses the secret key). */
