@@ -24,10 +24,21 @@ describe("dropship plans", () => {
     }
     expect(storePrice(22_900, "pct", 25)).toEqual({ price: 28_700, markup: 5_800 });
   });
-  it("seller keeps the markup minus the plan fee", () => {
+  it("keeps application plan fees aligned with the existing plan policy", () => {
+    expect({
+      free: PLANS.free.feePct,
+      pro: PLANS.pro.feePct,
+      elite: PLANS.elite.feePct,
+    }).toEqual({ free: 5, pro: 3, elite: 1.5 });
+  });
+  it("calculates seller net after rounding the plan fee to the nearest naira", () => {
     expect(sellerNet(10_000, "free")).toBe(9_500);
     expect(sellerNet(10_000, "pro")).toBe(9_700);
     expect(sellerNet(10_000, "elite")).toBe(9_850);
+    expect(sellerNet(101, "free")).toBe(96);
+    expect(sellerNet(101, "pro")).toBe(98);
+    expect(sellerNet(101, "elite")).toBe(99);
+    expect(sellerNet(1, "free")).toBe(1);
   });
   it("store addresses", () => {
     expect(slugify("Ada’s Closet!")).toBe("adas-closet");
