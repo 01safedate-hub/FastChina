@@ -22,14 +22,14 @@ export function GroupOrdersList({ orders }: { orders: GroupOrder[] }) {
   useEffect(() => {
     const timer = window.setInterval(async () => {
       if (document.visibilityState !== "visible") return;
-      const next = await Promise.all(items.map(async (item) => {
+      const refreshed = await Promise.all(orders.map(async (item) => {
         const progress = await linkProgress(item.code).catch(() => null);
-        return progress ? { ...item, ...progress } : item;
+        return progress ? { code: item.code, ...progress } : null;
       }));
-      setItems(next);
+      setItems((current) => current.map((item) => refreshed.find((next) => next?.code === item.code) ? { ...item, ...refreshed.find((next) => next?.code === item.code)! } : item));
     }, 10000);
     return () => window.clearInterval(timer);
-  }, [items.map((item) => item.code).join("|")]);
+  }, [orders]);
 
   const shareUrl = (code: string) => `${window.location.origin}/c/${encodeURIComponent(code)}`;
   const copy = async (code: string) => {
