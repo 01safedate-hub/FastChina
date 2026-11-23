@@ -81,7 +81,8 @@ async function Body({ searchParams }: { searchParams: PageProps<"/account/orders
                 <p className="text-[12px] font-semibold text-sale">{naira(o.total_ngn - o.paid_ngn)} still to pay</p>
               )}
               <Link href={`/track?code=${encodeURIComponent(o.code)}`} className="min-h-9 self-start rounded-full border border-ink px-3 py-1.5 text-[12px] font-bold">Track shipment</Link>
-            </li>}
+            </li>
+          ))}
         </ul>
       )}
     </>
