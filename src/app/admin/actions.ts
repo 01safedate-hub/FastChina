@@ -191,8 +191,16 @@ export async function markPayoutPaid(payoutId: unknown, reference: unknown): Pro
   const ref = typeof reference === "string" ? reference.trim().slice(0, 80) : "";
   if (typeof payoutId !== "string" || !ref) return { ok: false, message: "Add the transfer reference." };
   if (!hasSupabase) return { ok: true, message: "Demo: not saved." };
-  const { error } = await secretDb().from("seller_payouts").update({ status: "paid", reference: ref, paid_at: new Date().toISOString() }).eq("id", payoutId).eq("status", "pending");
-  return error ? { ok: false, message: error.message } : { ok: true, message: "Marked as paid" };
+  const { data, error } = await secretDb().from("seller_payouts")
+    .update({ status: "paid", reference: ref, paid_at: new Date().toISOString() })
+    .eq("id", payoutId)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (error) return { ok: false, message: error.message };
+  if (!data) return { ok: false, message: "This payout is no longer pending. Refresh the page and check its status." };
+  updateTag("stores");
+  return { ok: true, message: "Payout marked as paid. Only do this after confirming the bank transfer." };
 }
 
 /** Warehouse photo check: a one-time upload address for a photo of an order item (photo already shrunk in the browser). */
