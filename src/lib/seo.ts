@@ -3,7 +3,9 @@
  * so every page describes FastChina to Google the same way.
  */
 
-export const SHOP_URL = "https://fastchina.shop";
+import { SHOP_URL } from "@/lib/site-url";
+
+export { SHOP_URL };
 export const STORE_URL = "https://fastchina.store";
 export const BRAND = "FastChina";
 
