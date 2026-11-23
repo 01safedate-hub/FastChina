@@ -199,6 +199,11 @@ export function CheckoutView() {
             <h2 className="text-sm font-bold">1. Jumia pickup station</h2>
             <InfoButton topic="shipping" />
           </span>
+          <label className="flex flex-col gap-1 text-xs font-bold">
+            Email
+            <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="min-h-11 border border-black/15 px-2 text-sm font-normal" />
+          </label>
+
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1 text-xs font-bold">
               State
@@ -251,11 +256,6 @@ export function CheckoutView() {
               </button>
             ))}
           </div>
-
-          <label className="flex flex-col gap-1 text-xs font-bold">
-            Email
-            <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="min-h-11 border border-black/15 px-2 text-sm font-normal" />
-          </label>
 
           {(mode === "full" || mode === "small") && (
             <div className="flex flex-col gap-1.5">
