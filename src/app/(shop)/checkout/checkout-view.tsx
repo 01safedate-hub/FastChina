@@ -194,6 +194,10 @@ export function CheckoutView() {
             <h2 className="text-sm font-bold">1. Jumia pickup station</h2>
             <InfoButton topic="shipping" />
           </span>
+          <label className="flex flex-col gap-1 text-xs font-bold">
+                Email for payment receipt
+                <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="min-h-11 border border-black/15 px-2 text-sm font-normal" />
+              </label>
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1 text-xs font-bold">
               State
@@ -249,10 +253,6 @@ export function CheckoutView() {
 
           {(mode === "full" || mode === "small") && (
             <div className="flex flex-col gap-1.5" role="radiogroup" aria-label="Payment method">
-              <label className="flex flex-col gap-1 text-xs font-bold">
-                Email for payment receipt
-                <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="min-h-11 border border-black/15 px-2 text-sm font-normal" />
-              </label>
               {([["paystack", "Paystack"], ["flutterwave", "Flutterwave"]] as const).map(([id, label]) => (
                 <button key={id} type="button" role="radio" aria-checked={method === id} onClick={() => setMethod(id)} className={radio(method === id)}>
                   <span className={dot(method === id)} />
