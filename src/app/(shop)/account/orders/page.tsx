@@ -51,35 +51,37 @@ async function Body({ searchParams }: { searchParams: PageProps<"/account/orders
         <ul className="flex flex-col gap-2">
           {list.map((o) => (
             <li key={o.code} className="flex flex-col gap-2 bg-white p-4 md:rounded-2xl md:border md:border-line">
-              <div className="flex items-center justify-between gap-2">
-                <strong className="font-mono text-[14px]">#{o.code}</strong>
-                <span className="rounded-full bg-surface px-2.5 py-1 text-[12px] font-bold">{trackingStep(o.status as OrderStatus).label}</span>
-              </div>
-              <ul className="text-[13px] text-muted">
-                {o.items.map((i, k) => (
-                  <li key={k} className="flex flex-col">
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="truncate">{i.qty}× {i.title}{i.variant_label ? ` · ${i.variant_label}` : ""}</span>
+              <Link href={`/account/orders/${encodeURIComponent(o.code)}`} className="group -m-2 flex flex-col gap-3 rounded-xl p-2 outline-none focus-visible:ring-2 focus-visible:ring-ink">
+                <div className="flex items-center justify-between gap-2">
+                  <strong className="font-mono text-[14px]">#{o.code}</strong>
+                  <span className="rounded-full bg-surface px-2.5 py-1 text-[12px] font-bold">{trackingStep(o.status as OrderStatus).label}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2 border-t border-line pt-3 text-[13px]">
+                  <span className="text-muted">{o.items.length} {o.items.length === 1 ? "item" : "items"} · {PAY[o.pay_mode] ?? o.pay_mode} · {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Lagos" })}</span>
+                  <span className="flex items-center gap-2">
+                    <strong>{naira(o.total_ngn)}</strong>
+                    <span aria-hidden className="text-muted transition-transform group-hover:translate-x-0.5">→</span>
+                  </span>
+                </div>
+                <span className="sr-only">View order details for order {o.code}</span>
+              </Link>
+              {o.items.some((i) => i.customisable || o.status === "delivered") && (
+                <div className="flex flex-col gap-2 border-t border-line pt-2">
+                  {o.items.map((i) => (
+                    <div key={i.id} className="flex flex-col gap-1">
                       {o.status === "delivered" && <ReviewButton itemId={i.id} title={i.title} author={me.name.split(" ")[0]} />}
-                    </span>
-                    {i.customisable && !["cancelled", "refunded", "delivered", "shipped"].includes(o.status) && (
-                      <CustomArtwork itemId={i.id} custom={i.custom} canSend={o.paid_ngn > 0} minimum={i.customMoq} pieces={o.items.filter((x) => x.productSlug && x.productSlug === i.productSlug).reduce((n, x) => n + x.qty, 0) || i.qty} />
-                    )}
-                  </li>
-                ))}
-              </ul>
-              <div className="flex items-center justify-between gap-2 border-t border-line pt-2 text-[13px]">
-                <span className="text-muted">{PAY[o.pay_mode] ?? o.pay_mode} · {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Lagos" })}</span>
-                <span className="flex items-center gap-3">
-                  <strong>{naira(o.total_ngn)}</strong>
-                  <Link href={`/account/orders/${encodeURIComponent(o.code)}`} className="rounded-full border border-ink px-3 py-1.5 text-[12px] font-bold">Details</Link><Link href={`/track?code=${o.code}`} className="rounded-full border border-ink px-3 py-1.5 text-[12px] font-bold">Track</Link>
-                </span>
-              </div>
+                      {i.customisable && !["cancelled", "refunded", "delivered", "shipped"].includes(o.status) && (
+                        <CustomArtwork itemId={i.id} custom={i.custom} canSend={o.paid_ngn > 0} minimum={i.customMoq} pieces={o.items.filter((x) => x.productSlug && x.productSlug === i.productSlug).reduce((n, x) => n + x.qty, 0) || i.qty} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
               {o.paid_ngn < o.total_ngn && !["cancelled", "refunded"].includes(o.status) && (
                 <p className="text-[12px] font-semibold text-sale">{naira(o.total_ngn - o.paid_ngn)} still to pay</p>
               )}
-            </li>
-          ))}
+              <Link href={`/track?code=${encodeURIComponent(o.code)}`} className="min-h-9 self-start rounded-full border border-ink px-3 py-1.5 text-[12px] font-bold">Track shipment</Link>
+            </li>}
         </ul>
       )}
     </>
