@@ -4,6 +4,7 @@ import { ItemPhotos } from "./item-photos";
 import { naira } from "@/lib/format";
 import { checkStaff } from "@/lib/supabase/auth";
 import { CancelButton } from "./cancel-button";
+import { CancellationReview } from "./cancellation-review";
 import { CustomReview } from "./custom-review";
 import { ExternalLink } from "lucide-react";
 import { GuideCard } from "../guide/guide-card";
@@ -75,6 +76,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
                   {i.id && ["purchased", "purchasing", "paid", "shipped"].includes(o.status) && <ItemPhotos itemId={i.id} photos={i.photos ?? []} />}
                 </div>
               ))}
+              {o.cancellationRequest && <CancellationReview request={o.cancellationRequest} />}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-[#5B6170]">
                 <span>{o.phone} · placed {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Africa/Lagos" })}</span>
                 {["awaiting_payment", "part_paid", "paid", "purchasing", "shipped"].includes(o.status) && <CancelButton id={o.id} refund={o.status === "shipped"} paid={o.paid_ngn} />}
