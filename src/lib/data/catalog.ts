@@ -109,23 +109,65 @@ export async function getProducts(): Promise<Product[]> {
   return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
 }
 
-/** Products for one category only. Avoid loading the entire catalogue during category-page prerendering. */
+/** Products for one category only. First select a small set of slugs, then hydrate only those products. */
 export async function getProductsByCategory(category: CategoryKey): Promise<Product[]> {
   "use cache";
   cacheLife("minutes");
   cacheTag("catalog", `category:${category}`);
-  if (!hasSupabase) return SAMPLE_PRODUCTS.map(sampleToProduct).filter((p) => p.category === category);
 
-  const columns = PRODUCT_COLUMNS.replace("categories(", "categories!inner(");
+  const sampleFallback = () => SAMPLE_PRODUCTS
+    .map(sampleToProduct)
+    .filter((product) => product.category === category)
+    .slice(0, 36);
+
+  if (!hasSupabase) return sampleFallback();
+
+  // Do not join every product SKU while discovering a category. Fashion and other
+  // large categories can exceed Supabase's statement timeout when the full relation
+  // graph is selected during static generation.
+  const { data: candidates, error: candidateError } = await publicDb()
+    .from("products")
+    .select("slug, sale_count")
+    .eq("status", "active")
+    .eq("category_slug", category)
+    .order("sale_count", { ascending: false })
+    .order("slug", { ascending: true })
+    .limit(36);
+
+  // Some deployments model category membership through the categories relation
+  // rather than a denormalized category_slug. Retry using the relation, still bounded.
+  let slugs = (candidates ?? []).map((row) => row.slug);
+  if (candidateError) {
+    const retry = await publicDb()
+      .from("products")
+      .select("slug, categories!inner(slug)")
+      .in("status", ["active", "sold_out"])
+      .eq("categories.slug", category)
+      .order("slug", { ascending: true })
+      .limit(36);
+    if (retry.error) return sampleFallback();
+    slugs = (retry.data ?? []).map((row) => row.slug);
+  }
+
+  if (!slugs.length) return candidateError ? sampleFallback() : [];
+
   const { data, error } = await publicDb()
     .from("products")
-    .select(columns)
+    .select(PRODUCT_COLUMNS)
     .in("status", ["active", "sold_out"])
-    .eq("categories.slug", category)
-    .order("sale_count", { ascending: false })
-    .order("slug", { ascending: true });
-  if (error) throw new Error(`Category catalogue (${category}): ${error.message}`);
-  return ((data ?? []) as unknown as Row[]).map(rowToProduct).filter((p): p is Product => p !== null);
+    .in("slug", slugs);
+  if (error) return sampleFallback();
+
+  const bySlug = new Map(
+    ((data ?? []) as unknown as Row[])
+      .map(rowToProduct)
+      .filter((product): product is Product => product !== null)
+      .map((product) => [product.slug, product]),
+  );
+  return slugs.flatMap((slug) => {
+    const product = bySlug.get(slug);
+    return product ? [product] : [];
+  });
 }
 
 /** Minimal catalogue rows used to choose category-tile photos without loading SKU relations. */
