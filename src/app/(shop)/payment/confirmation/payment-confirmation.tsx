@@ -87,7 +87,9 @@ export function PaymentConfirmation() {
   const paid = state === "paid";
   const partial = state === "partial";
   const pending = state === "checking" || state === "pending";
-  const Icon = paid ? CheckCircle2 : pending ? Clock3 : state === "not-found" || state === "error" ? CircleAlert : CheckCircle2;\n  const orderTab = paid ? "processing" : state === "error" ? "all" : "unpaid";\n  const orderHref = `/account/orders?tab=${orderTab}`;
+  const Icon = paid ? CheckCircle2 : pending ? Clock3 : state === "not-found" || state === "error" ? CircleAlert : CheckCircle2;
+  const orderTab = paid ? "processing" : state === "error" ? "all" : "unpaid";
+  const orderHref = `/account/orders?tab=${orderTab}`;
   const heading = paid
     ? "Payment confirmed"
     : partial
