@@ -11,7 +11,7 @@ import { type NextRequest, NextResponse } from "next/server";
  *  - a seller's own domain     → their storefront too (looked up by verified domain)
  */
 const STORE_HOSTS = (process.env.STORE_HOSTS ?? "fastchina.store,www.fastchina.store").split(",").map((h) => h.trim());
-const MAIN_HOSTS = (process.env.MAIN_HOSTS ?? "fastchina.shop,www.fastchina.shop").split(",").map((h) => h.trim());
+const MAIN_HOSTS = (process.env.MAIN_HOSTS ?? "stunning-youtiao-4a78bd.netlify.app,fastchina.shop,www.fastchina.shop").split(",").map((h) => h.trim().toLowerCase());
 const STORE_ROOT = process.env.STORE_ROOT_DOMAIN ?? "fastchina.store";
 /** Pages that work the same on every domain (sign-in, legal, APIs, app files). */
 const SHARED = /^\/(sign-in|api|legal|track|offline|unsubscribe|notifications|pwa|manifest\.webmanifest|sw\.js|robots\.txt|sitemap\.xml)(\/|$)/;
