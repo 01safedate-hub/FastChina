@@ -268,6 +268,7 @@ export function CheckoutView() {
               <p className="mt-2 text-xs font-semibold text-muted">The link remains active for 7 days. No payment is taken from you when creating the link.</p>
             </div>
           )}
+        </section>
 
         {/* Savings */}
         <section className="flex flex-col gap-2.5 bg-white p-3 md:rounded-md md:border md:border-line md:p-4">
