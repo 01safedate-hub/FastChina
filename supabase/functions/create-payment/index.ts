@@ -30,7 +30,8 @@ async function initialize(provider: "paystack"|"flutterwave", reference: string,
   }
   const secret = Deno.env.get("FLUTTERWAVE_SECRET_KEY");
   if (!secret) throw new Error("Flutterwave is not configured in Supabase Secrets.");
-  const payloadHash = await flutterwavePayloadHash(amount, email, reference, secret);\n  const r = await fetch("https://api.flutterwave.com/v3/payments", {
+  const payloadHash = await flutterwavePayloadHash(amount, email, reference, secret);
+  const r = await fetch("https://api.flutterwave.com/v3/payments", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${secret}`,
