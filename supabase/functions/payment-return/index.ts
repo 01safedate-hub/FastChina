@@ -2,13 +2,13 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const projectUrl = Deno.env.get("SUPABASE_URL")!;
 const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const db = createClient(projectUrl,key,{auth:{persistSession:false,autoRefreshToken:false}});
-const DEFAULT_SITE_URL = "https://stunning-youtiao-4a78bd.netlify.app";
+const DEFAULT_SITE_URL = "https://deploy-preview-4--stunning-youtiao-4a78bd.netlify.app";
 const configuredSite = Deno.env.get("SITE_URL")?.trim();
 let siteOrigin = DEFAULT_SITE_URL;
 try {
   if (configuredSite) {
     const candidate = new URL(configuredSite);
-    if (candidate.protocol === "https:" && !candidate.hostname.startsWith("deploy-preview")) siteOrigin = candidate.origin;
+    if (candidate.protocol === "https:" && candidate.hostname === "deploy-preview-4--stunning-youtiao-4a78bd.netlify.app") siteOrigin = candidate.origin;
   }
 } catch { console.error("Invalid SITE_URL; using stable Netlify origin"); }
 const go = (path: string) => Response.redirect(new URL(path.startsWith("/") ? path : `/${path}`, siteOrigin), 302);
