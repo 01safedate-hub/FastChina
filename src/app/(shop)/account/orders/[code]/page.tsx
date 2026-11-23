@@ -52,7 +52,6 @@ async function Body({ params }: { params: PageProps<"/account/orders/[code]">["p
             </div>
           ))}
         </div>}
-        {cancellationEligible && <div className="mt-4"><CancellationRequest code={order.code} request={order.cancellationRequest} /></div>}
       </section>
 
       <section className="rounded-xl border border-line bg-white p-4">
@@ -80,6 +79,7 @@ async function Body({ params }: { params: PageProps<"/account/orders/[code]">["p
         <div className="flex justify-between border-t border-line pt-3 mt-2 text-sm"><span className="font-semibold">{fullyPaid ? "Payment status" : "Remaining balance"}</span><strong>{fullyPaid ? "Fully paid" : naira(Math.max(0, order.total_ngn - order.paid_ngn))}</strong></div>
         {!fullyPaid && !terminal && <Link href={`/account/orders?tab=unpaid`} className="mt-3 flex min-h-11 items-center justify-center rounded-md bg-ink px-4 text-sm font-bold text-white">View unpaid orders</Link>}
       </section>
+      {cancellationEligible && <CancellationRequest code={order.code} request={order.cancellationRequest} />}
       <Link href="/account/orders" className="inline-flex min-h-10 items-center gap-2 self-start px-1 text-sm font-semibold text-muted"><ArrowLeft size={15} /> Back to my orders</Link>
     </div>
   );
