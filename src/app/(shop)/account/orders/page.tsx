@@ -12,7 +12,7 @@ import { ReviewButton } from "./review-button";
 import { CustomArtwork } from "./custom-artwork";
 
 export const metadata: Metadata = { title: "My orders", robots: { index: false } };
-const PAY: Record<string, string> = { full: "Paid in full", small: "Pay small small", group: "Group pay" };
+const PAY: Record<string, string> = { full: "Pay in full", small: "Pay small small", group: "Group pay" };
 
 export default function OrdersPage({ searchParams }: PageProps<"/account/orders">) {
   return (
