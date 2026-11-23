@@ -35,7 +35,7 @@ export function CheckoutView() {
   const params = useSearchParams();
   const initial = params.get("pay");
   const [mode, setMode] = useState<Mode>(initial === "small" || initial === "group" ? initial : "full");
-  const { items } = useCart();
+  const { items, remove } = useCart();
   const [phone, setPhone] = useState("");
   const [placing, startPlacing] = useTransition();
   const [placeMsg, setPlaceMsg] = useState<string | null>(null);
@@ -320,7 +320,9 @@ export function CheckoutView() {
                 if (!r.ok) return setPlaceMsg(r.message);
                 if (mode === "group") {
                   if (!r.linkCode) return setPlaceMsg("The order was created, but its Group Pay link could not be generated. Contact support with order " + r.code + ".");
-                  window.location.assign("/c/" + encodeURIComponent(r.linkCode));
+                  // The order now exists: remove only the selected lines, preserving unselected cart items.
+                  selected.forEach((item) => remove(item.key));
+                  window.location.assign("/account/group-orders?created=" + encodeURIComponent(r.code));
                   return;
                 }
                 const payment = await startOrderPayment({
