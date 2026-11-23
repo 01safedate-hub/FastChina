@@ -383,8 +383,8 @@ export async function getProductSlugs(): Promise<string[]> {
     .from("products")
     .select("slug")
     .in("status", ["active", "sold_out"])
-    .order("sale_count", { ascending: false })
-    .order("slug", { ascending: true })
+    // Static params are only a small prerender sample. Avoid sorting the entire
+    // live catalogue during Netlify's build-time page-data collection.
     .limit(24);
 
   if (error) throw new Error(`Product slugs: ${error.message}`);
@@ -407,8 +407,7 @@ export async function getWholesaleProductSlugs(): Promise<string[]> {
     .select("slug")
     .eq("wholesale", true)
     .in("status", ["active", "sold_out"])
-    .order("sale_count", { ascending: false })
-    .order("slug", { ascending: true })
+    // Static params need only a bounded sample, not a full-catalogue sort.
     .limit(24);
 
   if (error) throw new Error(`Wholesale product slugs: ${error.message}`);
