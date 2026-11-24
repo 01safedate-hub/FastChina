@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { getProducts } from "@/lib/data/catalog";
+import { getProductFeedPage } from "@/lib/data/catalog";
 import { getSeller } from "@/lib/data/seller";
 import { PLANS } from "@/lib/dropship/plans";
 import { myListings, type MyListing } from "../actions";
@@ -17,12 +17,12 @@ export default async function ProductsPage() {
   await connection();
   const state = await getSeller();
   if (state.kind !== "live" && state.kind !== "demo") return <Gate state={state} />;
-  const [catalog, listings] = await Promise.all([getProducts(), state.kind === "demo" ? Promise.resolve(DEMO_LISTINGS) : myListings()]);
+  const [feed, listings] = await Promise.all([getProductFeedPage(null, 12), state.kind === "demo" ? Promise.resolve(DEMO_LISTINGS) : myListings()]);
   const plan = PLANS[state.data.store.plan];
   return (
     <Page title="Products" subtitle={`Pick from FastChina’s catalogue and set your price. ${plan.name} plan: up to ${plan.maxProducts >= 100_000 ? "unlimited" : plan.maxProducts} products.`}>
       <DemoNote demo={state.kind === "demo"} />
-      <ProductsManager catalog={catalog} listings={listings ?? []} plan={state.data.store.plan} />
+      <ProductsManager catalog={feed.products} nextCursor={feed.nextCursor} listings={listings ?? []} plan={state.data.store.plan} />
     </Page>
   );
 }
