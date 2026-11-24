@@ -35,6 +35,7 @@ Run in a non-production Supabase project with Paystack test credentials and disp
 |---|---|
 | Refund before Friday batch generation | Refunded item is excluded from the payout batch |
 | Refund after batch creation while payout is still pending | Batch is invalidated, its items are released, and the next batch is recalculated |
+| Refund while Paystack transfer is processing or awaiting approval | Adjustment is held provisionally; final transfer success keeps the debit, confirmed failure removes the provisional adjustment and releases the batch |
 | Refund after successful payout | Historical payout remains intact; a seller adjustment is created and offset against future earnings |
 | Multiple refunds against one paid payout | Each order item creates at most one adjustment |
 | Two payout workers claim at once | A payout is claimed once; no duplicate transfer reference is created |
