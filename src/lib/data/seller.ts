@@ -92,3 +92,23 @@ export async function getPayouts(): Promise<{ payouts: Payout[]; adjustments: Se
     bank: bank ?? { bank_name: null, account_number: null, account_name: null },
   };
 }
+
+
+export interface SellerSubscriptionPayment {
+  reference: string;
+  provider: "paystack" | "flutterwave";
+  amount_ngn: number;
+  status: "pending" | "success" | "failed" | "cancelled" | "reversed";
+  created_at: string;
+  verified_at: string | null;
+}
+
+/** Billing history is exposed through an auth.uid()-scoped database function. */
+export async function getSellerSubscriptionPayments(): Promise<SellerSubscriptionPayment[] | null> {
+  if (!hasSupabase) return null;
+  const user = await getSessionUser();
+  if (!user) return null;
+  const { data, error } = await (await userDb()).rpc("my_subscription_payment_history");
+  if (error) throw new Error(`Subscription history: ${error.message}`);
+  return (data ?? []) as SellerSubscriptionPayment[];
+}
