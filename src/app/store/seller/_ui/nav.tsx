@@ -14,7 +14,7 @@ const ITEMS = [
   { href: `${BASE}/orders`, label: "Orders", icon: ReceiptText },
   { href: `${BASE}/earnings`, label: "Earnings", icon: Wallet },
   { href: `${BASE}/design`, label: "Design", icon: Paintbrush },
-  { href: `${BASE}/plan`, label: "Plan", icon: Sparkles },
+  { href: `${BASE}/plan`, label: "Manage subscription", icon: Sparkles },
 ];
 
 export function SellerNav() {
