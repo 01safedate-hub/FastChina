@@ -163,7 +163,16 @@ Deno.serve(async req => {
       if (ue || !u.user?.email) return reply({ok:false,message:"Your account needs an email address before upgrading."},400);
       const {data:s,error:se} = await db.from("stores").select("id,plan").eq("owner_id",user.id).maybeSingle();
       if (se || !s) return reply({ok:false,message:"Open a store first."},404);
-      if (s.plan === b.plan) return reply({ok:false,message:"Your store is already on this plan."},409);
+      const renewal = b.renewal === true;
+      if (s.plan === b.plan && !renewal) return reply({ok:false,message:"Your store is already on this plan."},409);
+      if (renewal) {
+        if (s.plan !== b.plan) return reply({ok:false,message:"Renewal must match your current plan."},409);
+        const {data:settings,error:settingsError} = await db.from("store_subscription_settings")
+          .select("auto_renew,renewal_status").eq("store_id",s.id).maybeSingle();
+        if (settingsError || !settings?.auto_renew || settings.renewal_status !== "external_required") {
+          return reply({ok:false,message:"External renewal is not currently required for this store."},409);
+        }
+      }
       amount = b.plan === "pro" ? 15000 : 45000; email = u.user.email; description = `FastChina ${b.plan.toUpperCase()} monthly seller plan`;
       row = {provider,purpose:"seller_subscription",reference,store_id:s.id,customer_id:user.id,amount_ngn:amount,currency:"NGN",subscription_plan:b.plan,subscription_months:1,status:"pending"};
     } else return reply({ok:false,message:"Unsupported payment action."},400);
