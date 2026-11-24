@@ -19,8 +19,6 @@ export default async function PlanPage() {
   const s = state.data.store;
   const payments = state.kind === "live" ? await getSellerSubscriptionPayments() : null;
   const current = PLANS[s.plan];
-  const renewal = s.plan_renews_at ? new Date(s.plan_renews_at) : null;
-  const expired = renewal ? renewal.getTime() < new Date().getTime() : false;
 
   return (
     <Page title="Manage subscription" subtitle="Your plan, sales allowance and billing activity.">
@@ -33,8 +31,8 @@ export default async function PlanPage() {
             <h2 className="mt-1 text-[28px] font-black">{current.name}</h2>
             <p className="mt-1 text-[14px] text-[#A1A1AA]">{current.price ? `${ngn(current.price)} per month` : "Free forever"}</p>
           </div>
-          <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${s.status === "active" && !expired ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-300"}`}>
-            {s.status === "needs_upgrade" ? "Upgrade required" : expired ? "Renewal overdue" : s.status === "suspended" ? "Suspended" : "Active"}
+          <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${s.status === "active" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-300"}`}>
+            {s.status === "needs_upgrade" ? "Upgrade required" : s.status === "suspended" ? "Suspended" : "Active"}
           </span>
         </div>
         <div className="mt-5 grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-2">
