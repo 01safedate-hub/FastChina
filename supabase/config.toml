@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.flutterwave-webhook]
 verify_jwt = false
+
+[functions.seller-payouts]
+verify_jwt = false
