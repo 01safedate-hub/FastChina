@@ -20,7 +20,7 @@ export default async function PlanPage() {
   const payments = state.kind === "live" ? await getSellerSubscriptionPayments() : null;
   const current = PLANS[s.plan];
   const renewal = s.plan_renews_at ? new Date(s.plan_renews_at) : null;
-  const expired = renewal ? renewal.getTime() < Date.now() : false;
+  const expired = renewal ? renewal.getTime() < new Date().getTime() : false;
 
   return (
     <Page title="Manage subscription" subtitle="Your plan, sales allowance and billing activity.">
