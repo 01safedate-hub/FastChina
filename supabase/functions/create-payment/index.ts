@@ -172,6 +172,13 @@ Deno.serve(async req => {
         if (settingsError || !settings?.auto_renew || !["external_required","external_checkout_pending"].includes(settings.renewal_status)) {
           return reply({ok:false,message:"External renewal is not currently required for this store."},409);
         }
+        const {data:pending,error:pendingError} = await db.from("payment_transactions")
+          .select("reference,checkout_url").eq("store_id",s.id).eq("purpose","seller_subscription")
+          .eq("subscription_plan",b.plan).eq("status","pending")
+          .order("created_at",{ascending:false}).limit(1).maybeSingle();
+        if (pendingError) return reply({ok:false,message:"Could not check an existing renewal checkout."},500);
+        if (pending?.checkout_url) return reply({ok:true,checkoutUrl:pending.checkout_url,reference:pending.reference});
+        if (pending) return reply({ok:false,message:"A renewal checkout is already being prepared. Try again shortly."},409);
       }
       amount = b.plan === "pro" ? 15000 : 45000; email = u.user.email; description = `FastChina ${b.plan.toUpperCase()} monthly seller plan`;
       row = {provider,purpose:"seller_subscription",reference,store_id:s.id,customer_id:user.id,amount_ngn:amount,currency:"NGN",subscription_plan:b.plan,subscription_months:1,status:"pending"};
