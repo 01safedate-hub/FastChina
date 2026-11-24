@@ -2,6 +2,7 @@ import { Check, Lock, ShieldCheck, ShoppingCart, Truck, Wallet } from "lucide-re
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SeaQuote } from "./sea-quote";
+import { StoreNav } from "./store-nav";
 import { JsonLd } from "@/components/seo/json-ld";
 import { BrandWordmark } from "@/components/shop/brand";
 import { PLANS as SELLER_PLANS } from "@/lib/dropship/plans";
@@ -74,26 +75,7 @@ export default function StoreHome() {
         <span>Wholesale sea freight: Guangzhou → Lagos</span>
       </div>
 
-      <header className="border-b border-[#E6E1D5]">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-3 px-6 py-4">
-          <Link href="/store" className="flex items-center gap-1">
-            <BrandWordmark className="h-7 w-auto text-ink" title="FastChina.store" />
-            <span aria-hidden className="mt-2 self-start text-[13px] font-semibold text-[#7A5C17]">.store</span>
-          </Link>
-          <nav aria-label="Main" className="flex flex-1 flex-wrap gap-x-6 gap-y-1 text-[15px] font-medium">
-            <Link href={SHOP_URL}>Marketplace</Link>
-            <a href="#dropship">Dropship stores</a>
-            <a href="#how">How it works</a>
-            <a href="#wholesale">Wholesale · Sea</a>
-            <a href={`${SHOP}/guides`}>Guides</a>
-            <a href="#pricing">Pricing</a>
-          </nav>
-          <div className="flex items-center gap-2.5">
-            <Link href="/store/seller" className="px-4 py-3 text-[15px] font-medium">Seller sign in</Link>
-            <Link href="/store/seller" className="rounded-full bg-ink px-5 py-3 text-[15px] font-semibold text-[#FBFAF6]">Start selling</Link>
-          </div>
-        </div>
-      </header>
+      <StoreNav shopUrl={SHOP_URL} />
 
       <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 pt-16 pb-14 lg:grid-cols-2 [&>*]:min-w-0">
         <div className="flex flex-col gap-7">
