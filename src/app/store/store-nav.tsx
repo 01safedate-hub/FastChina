@@ -29,8 +29,8 @@ export function StoreNav({ shopUrl }: { shopUrl: string }) {
         </nav>
 
         <div className="hidden shrink-0 items-center gap-2.5 sm:flex">
-          <Link href="/store/seller" className="whitespace-nowrap px-3 py-3 text-sm font-medium">Seller sign in</Link>
-          <Link href="/store/seller" className="whitespace-nowrap rounded-full bg-ink px-5 py-3 text-sm font-semibold text-[#FBFAF6]">Start selling</Link>
+          <Link href="/sign-in?next=/store/seller" className="whitespace-nowrap px-3 py-3 text-sm font-medium">Seller sign in</Link>
+          <Link href="/sign-in?next=/store/seller" className="whitespace-nowrap rounded-full bg-ink px-5 py-3 text-sm font-semibold text-[#FBFAF6]">Start selling</Link>
         </div>
 
         <button
@@ -56,8 +56,8 @@ export function StoreNav({ shopUrl }: { shopUrl: string }) {
                 </a>
               ))}
               <div className="mt-4 grid grid-cols-2 gap-2">
-                <Link href="/store/seller" onClick={() => setOpen(false)} className="rounded-full border border-ink px-3 py-3 text-center text-sm font-semibold">Seller sign in</Link>
-                <Link href="/store/seller" onClick={() => setOpen(false)} className="rounded-full bg-ink px-3 py-3 text-center text-sm font-semibold text-white">Start selling</Link>
+                <Link href="/sign-in?next=/store/seller" onClick={() => setOpen(false)} className="rounded-full border border-ink px-3 py-3 text-center text-sm font-semibold">Seller sign in</Link>
+                <Link href="/sign-in?next=/store/seller" onClick={() => setOpen(false)} className="rounded-full bg-ink px-3 py-3 text-center text-sm font-semibold text-white">Start selling</Link>
               </div>
             </div>
           </nav>
