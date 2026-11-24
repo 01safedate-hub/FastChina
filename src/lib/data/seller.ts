@@ -116,7 +116,7 @@ export async function getSellerSubscriptionPayments(): Promise<SellerSubscriptio
 
 export interface SellerSubscriptionRenewalSettings {
   auto_renew: boolean;
-  renewal_status: "manual" | "wallet_ready" | "external_required" | "renewed";
+  renewal_status: "manual" | "wallet_ready" | "external_required" | "external_checkout_pending" | "renewed";
   wallet_ngn: number;
   plan_renews_at: string | null;
 }
