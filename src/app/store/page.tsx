@@ -86,10 +86,10 @@ export default function StoreHome() {
             <em className="text-[#7A5C17]">delivered to your door.</em>
           </h1>
           <p className="max-w-[520px] text-lg leading-relaxed text-[#4A4740]">Start a dropshipping store in Nigeria for free, buy at factory prices with free shipping, or move containers by sea. One account, three ways to import from China.</p>
-          <form action={`${SHOP}/search`} role="search" className="flex flex-wrap gap-2 rounded-[18px] border border-[#E6E1D5] bg-white p-2 shadow-[0_20px_40px_-24px_rgba(13,13,11,0.25)]">
+          <form action={`${SHOP}/search`} role="search" className="flex w-full min-w-0 flex-row flex-nowrap items-center gap-2 rounded-[18px] border border-[#E6E1D5] bg-white p-2 shadow-[0_20px_40px_-24px_rgba(13,13,11,0.25)]">
             <label htmlFor="hero-q" className="sr-only">Search products</label>
-            <input id="hero-q" name="q" type="search" placeholder="Search products" className="min-h-12 min-w-0 flex-[1_1_240px] bg-transparent px-3.5 text-base outline-none" />
-            <button type="submit" className="min-h-12 rounded-xl bg-ink px-6 text-[15px] font-semibold text-white">Search</button>
+            <input id="hero-q" name="q" type="search" placeholder="Search products" className="h-12 w-0 min-w-0 flex-1 border-0 bg-transparent px-3.5 text-base outline-none focus:ring-0" />
+            <button type="submit" className="min-h-12 shrink-0 rounded-xl bg-ink px-6 text-[15px] font-semibold text-white">Search</button>
           </form>
           <ul className="flex flex-wrap gap-x-8 gap-y-3 text-sm text-[#4A4740]">
             {["Pay in Naira", "Photo QC before dispatch", "Buyer protection on every order"].map((t) => (
