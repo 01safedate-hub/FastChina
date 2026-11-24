@@ -57,8 +57,8 @@ Your plan is activated only after verified payment and expires according to the 
           <RenewalSettings enabled={renewal.auto_renew} status={renewal.renewal_status} walletBalance={renewal.wallet_ngn} />
           {["external_required","external_checkout_pending"].includes(renewal.renewal_status) && renewal.auto_renew && (
             <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3">
-              <p className="text-sm font-bold text-amber-200">External payment required</p>
-              <p className="mt-1 text-xs leading-5 text-amber-100/80">Your wallet did not have enough funds for the last renewal attempt. Complete a secure external payment below.</p>
+              <p className="text-sm font-bold text-amber-200">{renewal.renewal_status === "external_checkout_pending" ? "External checkout in progress" : "External payment required"}</p>
+              <p className="mt-1 text-xs leading-5 text-amber-100/80">{renewal.renewal_status === "external_checkout_pending" ? "An external checkout is already open for this renewal. Continue that checkout; wallet retries are paused to prevent a duplicate charge." : "Your wallet did not have enough funds for the last renewal attempt. Complete a secure external payment below."}</p>
               <div className="mt-3"><UpgradeButton plan={s.plan} label={`Renew ${current.name}`} renewal /></div>
             </div>
           )}
