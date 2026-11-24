@@ -7,7 +7,7 @@
 3. FastChina creates and stores a Paystack NUBAN transfer recipient. The recipient code and bank code remain server-side.
 4. A payout batch remains pending until a Super Admin or Finance admin explicitly approves it in Admin → Dropship sellers. Approval is recorded with the reviewer and timestamp.
 5. Only approved batches can be claimed by the five-minute worker. The worker assigns a stable transfer reference and initiates one NGN transfer.
-6. A payout is marked paid only after the Paystack transfer verification endpoint or a signed Paystack transfer webhook confirms the final successful status and exact amount/currency.
+6. A payout is marked paid only after the Paystack transfer verification endpoint or a signed Paystack transfer webhook confirms the final successful status and exact amount/currency. Terminal states are protected against stale events: a delayed success cannot clear a failure or reversal, and a reversal after success moves the payout to staff review.
 7. Failed transfers release their payout item assignments and refund-adjustment applications for a later Friday batch. Reversed transfers are placed in staff review and are never submitted again automatically.
 
 ## Required configuration
@@ -43,6 +43,7 @@ select cron.schedule(
 - The initiation response never marks a payout paid. Only final provider verification does.
 - If Paystack returns an OTP/approval state, the payout remains `awaiting_approval`; the system does not bypass provider approval.
 - A `transfer.reversed` event moves the payout to `needs_review`. It is not automatically retried because the original payment may have reached the seller before reversal.
+- A later/stale webhook cannot change a failed or reversed payout back to paid. A reversal after a previously successful payout also moves it to `needs_review`.
 - Existing bank details are not trusted for automatic payout until the seller verifies them again.
 
 ## Refund and payout test matrix
@@ -68,10 +69,14 @@ Run in a non-production Supabase project with Paystack test credentials and disp
 ## Deployment order
 
 1. Review and merge this PR.
-2. Apply migration `20261124140000_041_paystack_seller_payouts.sql`.
+2. Apply migrations `20261124140000_041_paystack_seller_payouts.sql` and `20261124220000_042_harden_paystack_payout_terminal_states.sql`.
 3. Deploy Edge Functions `seller-payouts` and the updated `paystack-webhook`.
 4. Configure the secrets and Vault entry above.
 5. After configuring both secrets, create and verify the cron job using the SQL above.
 6. Run the test matrix in test mode before enabling live seller payouts.
 
-The migration and Edge Function code do not initiate any transfer during deployment. Transfers begin only after the scheduled worker is configured, a verified seller bank recipient exists, and a Super Admin or Finance admin approves the payout in Admin → Dropship sellers.
+The migrations and Edge Function code do not initiate any transfer during deployment. Transfers begin only after the scheduled worker is configured, a verified seller bank recipient exists, and a Super Admin or Finance admin approves the payout in Admin → Dropship sellers.
+
+## Current environment status
+
+The Friday payout-batch cron exists, but the five-minute Paystack transfer worker is not scheduled. The Supabase Vault currently has no `payout_cron_secret`. Therefore, the application can collect verified payout accounts and prepare/admin-approve batches, but it will not send transfers automatically until the dedicated cron secret is configured and the worker schedule is created. Do not describe automated payouts as active before verifying that schedule and a test-mode transfer.
