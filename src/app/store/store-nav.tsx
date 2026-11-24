@@ -17,7 +17,7 @@ export function StoreNav({ shopUrl }: { shopUrl: string }) {
   ];
 
   return (
-    <header className="relative z-40 border-b border-[#E6E1D5] bg-[#FBFAF6]">
+    <header className="sticky top-0 z-50 border-b border-[#E6E1D5] bg-[#FBFAF6]">
       <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/store" className="flex shrink-0 items-center gap-1" aria-label="FastChina.store home">
           <BrandWordmark className="h-7 w-auto text-ink" title="FastChina.store" />
