@@ -113,7 +113,7 @@ export async function removeListing(slug: unknown): Promise<Result> {
 }
 
 /** Starts seller subscription checkout through Supabase Edge Functions; the plan changes only after verified payment. */
-export async function requestUpgrade(plan: unknown, provider: unknown = "paystack"): Promise<Result> {
+export async function setSubscriptionAutoRenew(enabled: boolean): Promise<Result> {\n  if (typeof enabled !== "boolean") return { ok: false, message: "Invalid renewal setting." };\n  if (!hasSupabase) return { ok: false, message: "Renewal settings are unavailable while the database is disconnected." };\n  const user = await getSessionUser();\n  if (!user) return { ok: false, message: "Sign in to manage subscription renewal." };\n  const m = await myStore();\n  if (!m) return { ok: false, message: "Open a store first." };\n  if (enabled && m.store.plan === "free") return { ok: false, message: "Upgrade to Pro or Elite before enabling automatic renewal." };\n  const { error } = await (await userDb()).rpc("set_my_subscription_auto_renew", { p_enabled: enabled });\n  if (error) return { ok: false, message: error.message.includes("Automatic renewal") ? error.message : "We could not update automatic renewal. Please try again." };\n  return { ok: true, message: enabled ? "Automatic renewal enabled. Your wallet will be checked first." : "Automatic renewal disabled." };\n}\n\nexport async function requestUpgrade(plan: unknown, provider: unknown = "paystack", renewal = false): Promise<Result> {
   if (plan !== "pro" && plan !== "elite") return { ok: false, message: "Choose Pro or Elite." };
   if (provider !== "paystack" && provider !== "flutterwave") return { ok: false, message: "Choose a payment provider." };
   if (!hasSupabase) return { ok: false, message: "Payments are unavailable while the database is disconnected." };
@@ -121,7 +121,7 @@ export async function requestUpgrade(plan: unknown, provider: unknown = "paystac
   if (!user?.email) return { ok: false, message: "Sign in with an account that has an email address before upgrading." };
   const m = await myStore();
   if (!m) return { ok: false, message: "Open a store first." };
-  if (m.store.plan === plan) return { ok: false, message: "Your store is already on this plan." };
+  if (m.store.plan === plan && !renewal) return { ok: false, message: "Your store is already on this plan." };
   if (!(await allow("seller-plan-payment", 3, 3600, user.id))) return { ok: false, message: TOO_MANY };
 
   const { data: sessionData } = await (await userDb()).auth.getSession();
@@ -131,7 +131,7 @@ export async function requestUpgrade(plan: unknown, provider: unknown = "paystac
     const response = await fetch(`${SUPABASE_URL}/functions/v1/create-payment`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ action: "seller_subscription", plan, provider }),
+      body: JSON.stringify({ action: "seller_subscription", plan, provider, renewal }),
       cache: "no-store",
     });
     const result = await response.json();
