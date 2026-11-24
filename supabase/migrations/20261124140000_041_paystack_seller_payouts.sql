@@ -42,7 +42,7 @@ language plpgsql security definer set search_path = '' as $
 declare v_role text; v_status text;
 begin
   select role into v_role from public.profiles where id=p_actor;
-  if v_role not in ('super_admin','finance') then
+  if coalesce(v_role,'') not in ('super_admin','finance') then
     raise exception 'Only Super Admin or Finance can approve seller payouts' using errcode='42501';
   end if;
   if p_note is not null and length(p_note)>500 then raise exception 'Note is too long'; end if;
