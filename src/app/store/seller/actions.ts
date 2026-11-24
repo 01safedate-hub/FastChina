@@ -87,6 +87,9 @@ export async function verifyPayoutBank(input: { account_number: unknown; bank_co
   const account = typeof input.account_number === "string" ? input.account_number.replace(/\D/g, "") : "";
   const bankCode = typeof input.bank_code === "string" ? input.bank_code.trim() : "";
   if (!/^\d{10}$/.test(account) || !/^\d{2,8}$/.test(bankCode)) return { ok: false, message: "Enter a valid 10-digit account number and choose a bank." };
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: "Sign in to verify your payout account." };
+  if (!(await allow("payout-bank-verify", 10, 3600, user.id))) return { ok: false, message: TOO_MANY };
   const r = await payoutProviderRequest({ action: "verify_bank", account_number: account, bank_code: bankCode });
   return r.ok
     ? { ok: true, message: "Account verified. Confirm the account name before saving.", account_name: String(r.result.account_name ?? ""), bank_name: String(r.result.bank_name ?? "") }
@@ -100,6 +103,9 @@ export async function saveBank(input: { bank_name: unknown; bank_code: unknown; 
   const bank = typeof input.bank_name === "string" ? input.bank_name.trim().slice(0, 80) : "";
   const name = typeof input.account_name === "string" ? input.account_name.trim().slice(0, 80) : "";
   if (!/^\d{10}$/.test(account) || !/^\d{2,8}$/.test(bankCode) || !bank || !name) return { ok: false, message: "Verify your bank account before saving." };
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: "Sign in to save your payout account." };
+  if (!(await allow("payout-bank-save", 5, 3600, user.id))) return { ok: false, message: TOO_MANY };
   const r = await payoutProviderRequest({ action: "save_bank", bank_name: bank, bank_code: bankCode, account_number: account, confirmed_account_name: name });
   return r.ok ? { ok: true, message: "Verified payout account saved." } : { ok: false, message: r.message };
 }
