@@ -90,9 +90,7 @@ Your plan is activated only after verified payment and expires according to the 
                   {p.perks.map((perk) => <li key={perk} className="flex gap-2"><span aria-hidden className="text-[#3DDC84]">✓</span>{perk}</li>)}
                 </ul>
                 {currentPlan
-                  ? renewal?.renewal_status === "external_required" && s.plan !== "free" && renewal.auto_renew
-                    ? <UpgradeButton plan={s.plan} label={`Renew ${p.name}`} renewal />
-                    : <span className="flex min-h-11 items-center justify-center rounded-full border border-white/15 text-[14px] font-bold text-[#A1A1AA]">Current plan</span>
+                  ? <span className="flex min-h-11 items-center justify-center rounded-full border border-white/15 text-[14px] font-bold text-[#A1A1AA]">Current plan</span>
                   : p.key === "free" ? <span className="text-center text-xs text-[#777780]">Contact support to change to Free.</span>
                   : <UpgradeButton plan={p.key} label={`Get ${p.name}`} featured={featured} />}
               </section>
