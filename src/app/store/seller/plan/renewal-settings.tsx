@@ -5,7 +5,7 @@ import { call } from "@/lib/net";
 import { setSubscriptionAutoRenew } from "../actions";
 import { ngn } from "../_ui/ui";
 
-type Status = "manual" | "wallet_ready" | "external_required" | "renewed";
+type Status = "manual" | "wallet_ready" | "external_required" | "external_checkout_pending" | "renewed";
 
 export function RenewalSettings({ enabled, status, walletBalance }: {
   enabled: boolean;
@@ -24,13 +24,15 @@ export function RenewalSettings({ enabled, status, walletBalance }: {
     });
   }
 
-  const statusLabel = status === "external_required"
-    ? "External payment required"
+  const statusLabel = status === "external_checkout_pending"
+    ? "External checkout started"
+    : status === "external_required"
+      ? "External payment required"
     : status === "renewed"
-      ? "Last renewal paid from wallet"
-      : active
-        ? "Wallet-first renewal enabled"
-        : "Manual renewal";
+        ? "Last renewal completed"
+        : active
+          ? "Wallet-first renewal enabled"
+          : "Manual renewal";
 
   return (
     <div className="space-y-3">
