@@ -118,6 +118,7 @@ begin
     update public.seller_payouts set status='failed',transfer_status='failed',
       transfer_payload=coalesce(p_payload,'{}'::jsonb),transfer_updated_at=now() where id=p.id;
     delete from public.seller_payout_adjustment_applications where payout_id=p.id;
+    delete from public.seller_payout_adjustments where original_payout_id=p.id;
     update public.order_items set payout_id=null where payout_id=p.id;
   elsif p_status='reversed' then
     -- A reversal after a successful credit needs staff reconciliation; never auto-resubmit it.
@@ -142,7 +143,7 @@ grant execute on function public.record_paystack_seller_payout_event(text,text,b
 -- later confirms failure, the event handler removes the provisional adjustment.
 create or replace function public.reconcile_seller_refund(p_order uuid)
 returns void
-language plpgsql security definer set search_path = '' as $
+language plpgsql security definer set search_path = '' as $function$
 declare p record;
 begin
   for p in
@@ -176,7 +177,7 @@ begin
       update public.order_items set payout_id=null where payout_id=p.id;
     end if;
   end loop;
-end $;
+end $function$;
 
 revoke execute on function public.reconcile_seller_refund(uuid) from public, anon, authenticated;
 grant execute on function public.reconcile_seller_refund(uuid) to service_role;
