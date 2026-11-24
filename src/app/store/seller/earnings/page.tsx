@@ -18,7 +18,7 @@ export default async function EarningsPage() {
     : await getPayouts();
   const fee = PLANS[d.store.plan].feePct;
   return (
-    <Page title="Earnings" subtitle={`You keep your markup minus a ${fee}% plan fee. Eligible earnings are batched on Fridays and sent through Paystack after your bank account is verified.`}>
+    <Page title="Earnings" subtitle={`You keep your markup minus a ${fee}% plan fee. Eligible earnings are batched on Fridays and submitted through Paystack after your bank account is verified. Transfers requiring provider approval are held for review.`}>
       <DemoNote demo={state.kind === "demo"} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="On the way" value={ngn(d.earnings.pending)} sub="Paid once delivered" />
