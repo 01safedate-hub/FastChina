@@ -25,7 +25,7 @@ Deno.serve(async (req: Request) => {
     const action = body?.action;
 
     if (action === "banks") {
-      const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\\s+/i, "");
+      const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
       const { data: authData, error: authError } = await db.auth.getUser(token);
       if (authError || !authData.user) return json({ error: "Sign in to continue." }, 401);
       const banks = await api("/bank?country=nigeria&currency=NGN&perPage=100");
@@ -33,24 +33,24 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "verify_bank") {
-      const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\\s+/i, "");
+      const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
       const { data: authData, error: authError } = await db.auth.getUser(token);
       if (authError || !authData.user) return json({ error: "Sign in to continue." }, 401);
-      const account = typeof body.account_number === "string" ? body.account_number.replace(/\\D/g, "") : "";
+      const account = typeof body.account_number === "string" ? body.account_number.replace(/\D/g, "") : "";
       const bankCode = typeof body.bank_code === "string" ? body.bank_code.trim() : "";
-      if (!/^\\d{10}$/.test(account) || !/^\\d{2,8}$/.test(bankCode)) return json({ error: "Enter a valid 10-digit account number and bank." }, 400);
+      if (!/^\d{10}$/.test(account) || !/^\d{2,8}$/.test(bankCode)) return json({ error: "Enter a valid 10-digit account number and bank." }, 400);
       const resolved = await api(`/bank/resolve?account_number=${encodeURIComponent(account)}&bank_code=${encodeURIComponent(bankCode)}`);
       if (!resolved?.account_name) return json({ error: "Paystack could not verify this account." }, 422);
       return json({ account_name: String(resolved.account_name), bank_name: String(resolved.bank_name ?? "") });
     }
 
     if (action === "save_bank") {
-      const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\\s+/i, "");
+      const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
       const { data: authData, error: authError } = await db.auth.getUser(token);
       if (authError || !authData.user) return json({ error: "Sign in to continue." }, 401);
-      const account = typeof body.account_number === "string" ? body.account_number.replace(/\\D/g, "") : "";
+      const account = typeof body.account_number === "string" ? body.account_number.replace(/\D/g, "") : "";
       const bankCode = typeof body.bank_code === "string" ? body.bank_code.trim() : "";
-      if (!/^\\d{10}$/.test(account) || !/^\\d{2,8}$/.test(bankCode)) return json({ error: "Enter a valid bank account." }, 400);
+      if (!/^\d{10}$/.test(account) || !/^\d{2,8}$/.test(bankCode)) return json({ error: "Enter a valid bank account." }, 400);
       const resolved = await api(`/bank/resolve?account_number=${encodeURIComponent(account)}&bank_code=${encodeURIComponent(bankCode)}`);
       const suppliedName = typeof body.confirmed_account_name === "string" ? body.confirmed_account_name.trim() : "";
       const resolvedName = String(resolved?.account_name ?? "");
