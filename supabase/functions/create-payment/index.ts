@@ -166,6 +166,9 @@ Deno.serve(async req => {
       const renewal = b.renewal === true;
       if (s.plan === b.plan && !renewal) return reply({ok:false,message:"Your store is already on this plan."},409);
       if (renewal) {
+        // Expire stale subscription checkout rows before considering an existing renewal link.
+        const {error:expiryError} = await db.rpc("expire_pending_seller_subscription_payments");
+        if (expiryError) return reply({ok:false,message:"Could not check expired subscription checkouts. Please try again."},500);
         if (s.plan !== b.plan) return reply({ok:false,message:"Renewal must match your current plan."},409);
         const {data:settings,error:settingsError} = await db.from("store_subscription_settings")
           .select("auto_renew,renewal_status").eq("store_id",s.id).maybeSingle();
@@ -174,14 +177,14 @@ Deno.serve(async req => {
         }
         const {data:pending,error:pendingError} = await db.from("payment_transactions")
           .select("reference,checkout_url").eq("store_id",s.id).eq("purpose","seller_subscription")
-          .eq("subscription_plan",b.plan).eq("status","pending")
+          .eq("subscription_plan",b.plan).eq("status","pending").gt("expires_at",new Date().toISOString())
           .order("created_at",{ascending:false}).limit(1).maybeSingle();
         if (pendingError) return reply({ok:false,message:"Could not check an existing renewal checkout."},500);
         if (pending?.checkout_url) return reply({ok:true,checkoutUrl:pending.checkout_url,reference:pending.reference});
         if (pending) return reply({ok:false,message:"A renewal checkout is already being prepared. Try again shortly."},409);
       }
       amount = b.plan === "pro" ? 15000 : 45000; email = u.user.email; description = `FastChina ${b.plan.toUpperCase()} monthly seller plan`;
-      row = {provider,purpose:"seller_subscription",reference,store_id:s.id,customer_id:user.id,amount_ngn:amount,currency:"NGN",subscription_plan:b.plan,subscription_months:1,status:"pending"};
+      row = {provider,purpose:"seller_subscription",reference,store_id:s.id,customer_id:user.id,amount_ngn:amount,currency:"NGN",subscription_plan:b.plan,subscription_months:1,status:"pending",expires_at:new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()};
     } else return reply({ok:false,message:"Unsupported payment action."},400);
 
     const {error:ie} = await db.from("payment_transactions").insert(row);
