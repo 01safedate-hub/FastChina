@@ -27,8 +27,52 @@ Deno.serve(async (req: Request) => {
 
   let event: any;
   try { event = JSON.parse(rawBody); } catch { return json({ error: "Invalid JSON" }, 400); }
-  if (event?.event !== "charge.success" || !event?.data?.reference) return json({ received: true, ignored: true });
+  if (!event?.data?.reference) return json({ received: true, ignored: true });
   const reference = String(event.data.reference);
+  if (["transfer.success","transfer.failed","transfer.reversed"].includes(String(event?.event))) {
+    const eventId = `${event.event}:${reference}`;
+    const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: prior } = await db.from("payment_webhook_events").select("id,processed_at")
+      .eq("provider","paystack").eq("event_id",eventId).maybeSingle();
+    if (prior?.processed_at) return json({ received:true, duplicate:true });
+    if (!prior) {
+      const { error } = await db.from("payment_webhook_events").insert({
+        provider:"paystack",event_id:eventId,event_type:String(event.event),reference,payload:event
+      });
+      if (error) {
+        const { data: raced } = await db.from("payment_webhook_events").select("id,processed_at")
+          .eq("provider","paystack").eq("event_id",eventId).maybeSingle();
+        if (raced?.processed_at) return json({ received:true,duplicate:true });
+        if (!raced) return json({ error:"Could not record transfer webhook event" },500);
+      }
+    }
+    try {
+      // Verify the final status and amount with Paystack before changing payout state.
+      const verifiedResponse = await fetch(`https://api.paystack.co/transfer/verify/${encodeURIComponent(reference)}`, {
+        headers:{ Authorization:`Bearer ${secret}` }
+      });
+      const verifiedBody = await verifiedResponse.json();
+      const transfer = verifiedBody?.data;
+      const expectedStatus = String(event.event).split(".")[1];
+      if (!verifiedResponse.ok || verifiedBody?.status !== true ||
+          transfer?.reference !== reference || String(transfer?.status).toLowerCase() !== expectedStatus) {
+        throw new Error("Paystack transfer verification did not match the webhook");
+      }
+      const { error } = await db.rpc("record_paystack_seller_payout_event", {
+        p_reference:reference,p_status:expectedStatus,p_amount_kobo:Number(transfer.amount),
+        p_currency:String(transfer.currency ?? ""),p_payload:transfer
+      });
+      if (error) throw error;
+      await db.from("payment_webhook_events").update({ processed_at:new Date().toISOString(),processing_error:null })
+        .eq("provider","paystack").eq("event_id",eventId);
+      return json({ received:true,processed:true });
+    } catch (error) {
+      await db.from("payment_webhook_events").update({ processing_error:error instanceof Error ? error.message : "Transfer webhook failed" })
+        .eq("provider","paystack").eq("event_id",eventId);
+      return json({ error:"Transfer webhook processing failed" },500);
+    }
+  }
+  if (event?.event !== "charge.success") return json({ received: true, ignored: true });
   const eventId = `charge.success:${reference}:${String(event.data.id ?? "")}`;
   const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
