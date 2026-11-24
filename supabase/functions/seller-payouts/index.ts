@@ -74,6 +74,30 @@ Deno.serve(async (req: Request) => {
     if (!cronSecret || req.headers.get("x-payout-cron-secret") !== cronSecret) return json({ error: "Unauthorized" }, 401);
     if (action !== "process_due") return json({ error: "Unsupported action" }, 400);
 
+    // Reconcile transfers already accepted by Paystack before claiming new batches.
+    // Ambiguous submissions in needs_review are deliberately not re-submitted.
+    const { data: inFlight, error: inFlightError } = await db.from("seller_payouts")
+      .select("id,transfer_reference,amount_ngn")
+      .in("transfer_status", ["processing","awaiting_approval"])
+      .not("transfer_reference","is",null)
+      .order("transfer_updated_at",{ascending:true}).limit(50);
+    if (inFlightError) throw inFlightError;
+    for (const payout of inFlight ?? []) {
+      try {
+        const verified = await api(`/transfer/verify/${encodeURIComponent(payout.transfer_reference)}`);
+        const state = String(verified?.status ?? "").toLowerCase();
+        if (!["success","failed","reversed"].includes(state)) continue;
+        const { error } = await db.rpc("record_paystack_seller_payout_event", {
+          p_reference: payout.transfer_reference, p_status: state,
+          p_amount_kobo: Number(verified.amount), p_currency: String(verified.currency ?? ""),
+          p_payload: verified,
+        });
+        if (error) throw error;
+      } catch (error) {
+        console.error("Transfer reconciliation deferred", payout.id, error instanceof Error ? error.message : "unknown error");
+      }
+    }
+
     // Claiming is atomic. A payout that has entered processing is never submitted twice.
     const { data: jobs, error: claimError } = await db.rpc("claim_seller_payout_transfers", { p_limit: 20 });
     if (claimError) throw claimError;
