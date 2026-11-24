@@ -14,8 +14,25 @@
 
 - Keep `PAYSTACK_SECRET_KEY` in Supabase Edge Function secrets. Never expose it to the browser or commit it.
 - Add a long random `PAYOUT_CRON_SECRET` to the `seller-payouts` Edge Function secrets.
-- Add the exact same value to Supabase Vault under the secret name `payout_cron_secret`. The migration's pg_cron job reads it from Vault and sends it as `x-payout-cron-secret`.
-- Confirm the Supabase project URL setting `app.settings.supabase_url` is configured for the database cron job.
+- Add the exact same value to Supabase Vault under the secret name `payout_cron_secret`.
+- The migration intentionally does **not** create a cron job. The project had no payout Vault secret or configured Supabase URL setting at migration time, so automatic processing remains disabled until the secrets are configured.
+- After both secrets exist, create the worker schedule in the Supabase SQL Editor:
+```sql
+select cron.schedule(
+  'fc-seller-payout-transfers',
+  '*/5 * * * *',
+  $job$
+    select net.http_post(
+      url := 'https://cczzhtlbpqyxbdbaudfo.supabase.co/functions/v1/seller-payouts',
+      headers := jsonb_build_object(
+        'Content-Type','application/json',
+        'x-payout-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='payout_cron_secret' limit 1)
+      ),
+      body := '{"action":"process_due"}'::jsonb
+    );
+  $job$
+);
+```
 - Set the Paystack webhook URL to `/functions/v1/paystack-webhook`. The webhook handler verifies the HMAC signature and then verifies transfer status, amount, currency, and reference with Paystack.
 - Keep transfers in Paystack test mode until all test cases below pass. Do not use production seller funds for testing.
 
@@ -54,7 +71,7 @@ Run in a non-production Supabase project with Paystack test credentials and disp
 2. Apply migration `20261124140000_041_paystack_seller_payouts.sql`.
 3. Deploy Edge Functions `seller-payouts` and the updated `paystack-webhook`.
 4. Configure the secrets and Vault entry above.
-5. Verify the cron job exists and points to the production Supabase URL.
+5. After configuring both secrets, create and verify the cron job using the SQL above.
 6. Run the test matrix in test mode before enabling live seller payouts.
 
 The migration and Edge Function code do not initiate any transfer during deployment. Transfers begin only after the scheduled worker is configured, a verified seller bank recipient exists, and a Super Admin or Finance admin approves the payout in Admin → Dropship sellers.
