@@ -86,7 +86,7 @@ export function SellerNav() {
           <aside
             id="seller-mobile-navigation"
             aria-label="Seller dashboard navigation"
-            className="fixed inset-y-14 right-0 z-50 flex w-[min(19rem,88vw)] flex-col gap-1 border-l border-white/10 bg-[#0E0E10] p-3 shadow-2xl md:hidden"
+            className="fixed inset-y-14 left-0 z-50 flex w-[min(19rem,88vw)] flex-col gap-1 border-r border-white/10 bg-[#0E0E10] p-3 shadow-2xl md:hidden"
           >
             <p className="px-3 pb-2 pt-3 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#777780]">Dashboard</p>
             {links(true)}
