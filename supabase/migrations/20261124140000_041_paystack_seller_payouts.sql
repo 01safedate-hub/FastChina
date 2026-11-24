@@ -44,9 +44,6 @@ begin
       and s.status <> 'suspended'
       and s.payout_account_verified_at is not null
       and s.paystack_recipient_code is not null
-      and s.bank_name = sp.bank_snapshot->>'bank'
-      and s.account_number = sp.bank_snapshot->>'account'
-      and s.account_name = sp.bank_snapshot->>'name'
     order by sp.created_at, sp.id
     limit greatest(1, least(coalesce(p_limit,20),50))
     for update of sp skip locked
@@ -54,7 +51,11 @@ begin
     v_ref := 'fcsp-' || replace(p.id::text,'-','');
     update public.seller_payouts sp
       set status='processing', transfer_status='processing',
-          transfer_reference=v_ref, transfer_recipient_code=p.paystack_recipient_code, transfer_updated_at=now()
+          transfer_reference=v_ref, transfer_recipient_code=p.paystack_recipient_code,
+          bank_snapshot=jsonb_build_object('bank',(select bank_name from public.stores where id=p.store_id),
+            'account',(select account_number from public.stores where id=p.store_id),
+            'name',(select account_name from public.stores where id=p.store_id)),
+          transfer_updated_at=now()
       where sp.id=p.id;
     payout_id := p.id; amount_ngn := p.amount_ngn; reference := v_ref;
     recipient_code := p.paystack_recipient_code;
