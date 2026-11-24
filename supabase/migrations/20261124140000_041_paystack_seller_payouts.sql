@@ -88,6 +88,7 @@ begin
     where id=p.id;
   if p_status='failed' then
     delete from public.seller_payout_adjustment_applications where payout_id=p.id;
+    delete from public.seller_payout_adjustments where original_payout_id=p.id;
     update public.order_items set payout_id=null where payout_id=p.id;
   end if;
   return true;
@@ -104,7 +105,7 @@ begin
   if p_amount_kobo <> p.amount_ngn::bigint * 100 or p_currency <> 'NGN' then
     raise exception 'Paystack payout amount or currency mismatch';
   end if;
-  if p.transfer_status='success' then return true; end if;
+  if p.transfer_status='success' and p_status <> 'reversed' then return true; end if;
   if p_status='success' then
     update public.seller_payouts set status='paid',transfer_status='success',
       reference=p_reference,paid_at=coalesce(paid_at,now()),transfer_payload=coalesce(p_payload,'{}'::jsonb),transfer_updated_at=now()
@@ -130,6 +131,51 @@ revoke execute on function public.record_paystack_seller_payout_event(text,text,
 grant execute on function public.claim_seller_payout_transfers(integer) to service_role;
 grant execute on function public.set_seller_payout_transfer_state(text,text,text,jsonb) to service_role;
 grant execute on function public.record_paystack_seller_payout_event(text,text,bigint,text,jsonb) to service_role;
+
+
+-- A refund can race with a transfer already submitted to Paystack. Keep the batch
+-- attached and create the adjustment while its final status is unknown. If Paystack
+-- later confirms failure, the event handler removes the provisional adjustment.
+create or replace function public.reconcile_seller_refund(p_order uuid)
+returns void
+language plpgsql security definer set search_path = '' as $
+declare p record;
+begin
+  for p in
+    select sp.id, sp.store_id, sp.status
+    from public.seller_payouts sp
+    where exists (
+      select 1 from public.order_items i
+      where i.order_id=p_order and i.payout_id=sp.id
+    )
+    order by sp.id
+    for update
+  loop
+    if p.status in ('paid','processing','awaiting_approval','needs_review') then
+      insert into public.seller_payout_adjustments
+        (store_id,order_item_id,original_payout_id,amount_ngn,reason)
+      select e.store_id,e.item_id,p.id,e.net_ngn,'order_refund'
+      from public.store_earnings_all e
+      where e.order_id=p_order
+        and e.item_id in (select i.id from public.order_items i where i.order_id=p_order and i.payout_id=p.id)
+        and e.net_ngn>0
+      on conflict (order_item_id) do nothing;
+
+      if p.status in ('processing','awaiting_approval') then
+        update public.seller_payouts set status='needs_review' where id=p.id;
+      end if;
+    elsif p.status='pending' then
+      delete from public.seller_payout_adjustment_applications where payout_id=p.id;
+      update public.order_items set payout_id=null where payout_id=p.id;
+      update public.seller_payouts set status='failed' where id=p.id and status='pending';
+    else
+      update public.order_items set payout_id=null where payout_id=p.id;
+    end if;
+  end loop;
+end $;
+
+revoke execute on function public.reconcile_seller_refund(uuid) from public, anon, authenticated;
+grant execute on function public.reconcile_seller_refund(uuid) to service_role;
 
 -- The worker runs every five minutes. Vault secret payout_cron_secret must match
 -- the PAYOUT_CRON_SECRET Edge Function secret. No transfer runs until both exist.
