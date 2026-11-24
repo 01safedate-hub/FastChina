@@ -38,7 +38,7 @@ create unique index if not exists seller_payouts_transfer_reference_uidx
 create or replace function public.review_seller_payout(
   p_payout uuid, p_actor uuid, p_approve boolean, p_note text default null
 ) returns text
-language plpgsql security definer set search_path = '' as $
+language plpgsql security definer set search_path = '' as $$
 declare v_role text; v_status text;
 begin
   select role into v_role from public.profiles where id=p_actor;
@@ -65,7 +65,7 @@ begin
   delete from public.seller_payout_adjustment_applications where payout_id=p_payout;
   update public.order_items set payout_id=null where payout_id=p_payout;
   return 'rejected';
-end $;
+end $$;
 revoke execute on function public.review_seller_payout(uuid,uuid,boolean,text) from public,anon,authenticated;
 grant execute on function public.review_seller_payout(uuid,uuid,boolean,text) to service_role;
 
