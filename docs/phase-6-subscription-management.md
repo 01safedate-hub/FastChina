@@ -32,6 +32,6 @@ The current fallback is an external hosted checkout that the seller must complet
 
 - `20261125100000_035_seller_subscription_history.sql`: owner-scoped billing history RPC.
 - `20261125120000_036_wallet_first_subscription_renewals.sql`: opt-in renewal settings, idempotent renewal ledger, wallet-first worker, and five-minute cron.
-- `20261125130000_037_subscription_renewal_retry_and_external_completion.sql`: retry after wallet top-up and renewal-status reconciliation after verified external payment.
+- `20261125130000_037_subscription_renewal_retry_and_external_completion.sql`: retry after wallet top-up and renewal-status reconciliation after verified external payment.\n- `20261125140000_038_run_wallet_renewals_before_expiry_sweep.sql`: run wallet renewal processing before the existing three-day expiry/grace-period downgrade.
 
 Existing sellers are not automatically enrolled. They must enable the setting from Manage subscription.
