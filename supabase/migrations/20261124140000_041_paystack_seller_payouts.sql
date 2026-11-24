@@ -223,20 +223,6 @@ end $function$;
 revoke execute on function public.reconcile_seller_refund(uuid) from public, anon, authenticated;
 grant execute on function public.reconcile_seller_refund(uuid) to service_role;
 
--- The worker runs every five minutes. Vault secret payout_cron_secret must match
--- the PAYOUT_CRON_SECRET Edge Function secret. No transfer runs until both exist.
-select cron.unschedule('fc-seller-payout-transfers') where exists (select 1 from cron.job where jobname='fc-seller-payout-transfers');
-select cron.schedule(
-  'fc-seller-payout-transfers',
-  '*/5 * * * *',
-  $job$
-    select net.http_post(
-      url := current_setting('app.settings.supabase_url', true) || '/functions/v1/seller-payouts',
-      headers := jsonb_build_object(
-        'Content-Type','application/json',
-        'x-payout-cron-secret',(select decrypted_secret from vault.decrypted_secrets where name='payout_cron_secret' limit 1)
-      ),
-      body := '{"action":"process_due"}'::jsonb
-    );
-  $job$
-);
+-- Cron is intentionally not enabled by this migration. Configure PAYOUT_CRON_SECRET
+-- as an Edge Function secret and payout_cron_secret in Vault first, then create
+-- the scheduled job using the SQL documented in docs/phase-5-paystack-payouts.md.
