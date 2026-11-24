@@ -2,6 +2,7 @@ import { Check, Lock, ShieldCheck, ShoppingCart, Truck, Wallet } from "lucide-re
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SeaQuote } from "./sea-quote";
+import { StoreNav } from "./store-nav";
 import { JsonLd } from "@/components/seo/json-ld";
 import { BrandWordmark } from "@/components/shop/brand";
 import { PLANS as SELLER_PLANS } from "@/lib/dropship/plans";
@@ -74,26 +75,7 @@ export default function StoreHome() {
         <span>Wholesale sea freight: Guangzhou → Lagos</span>
       </div>
 
-      <header className="border-b border-[#E6E1D5]">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-3 px-6 py-4">
-          <Link href="/store" className="flex items-center gap-1">
-            <BrandWordmark className="h-7 w-auto text-ink" title="FastChina.store" />
-            <span aria-hidden className="mt-2 self-start text-[13px] font-semibold text-[#7A5C17]">.store</span>
-          </Link>
-          <nav aria-label="Main" className="flex flex-1 flex-wrap gap-x-6 gap-y-1 text-[15px] font-medium">
-            <Link href={SHOP_URL}>Marketplace</Link>
-            <a href="#dropship">Dropship stores</a>
-            <a href="#how">How it works</a>
-            <a href="#wholesale">Wholesale · Sea</a>
-            <a href={`${SHOP}/guides`}>Guides</a>
-            <a href="#pricing">Pricing</a>
-          </nav>
-          <div className="flex items-center gap-2.5">
-            <Link href="/store/seller" className="px-4 py-3 text-[15px] font-medium">Seller sign in</Link>
-            <Link href="/store/seller" className="rounded-full bg-ink px-5 py-3 text-[15px] font-semibold text-[#FBFAF6]">Start selling</Link>
-          </div>
-        </div>
-      </header>
+      <StoreNav shopUrl={SHOP_URL} />
 
       <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 pt-16 pb-14 lg:grid-cols-2 [&>*]:min-w-0">
         <div className="flex flex-col gap-7">
@@ -104,10 +86,10 @@ export default function StoreHome() {
             <em className="text-[#7A5C17]">delivered to your door.</em>
           </h1>
           <p className="max-w-[520px] text-lg leading-relaxed text-[#4A4740]">Start a dropshipping store in Nigeria for free, buy at factory prices with free shipping, or move containers by sea. One account, three ways to import from China.</p>
-          <form action={`${SHOP}/search`} role="search" className="flex flex-wrap gap-2 rounded-[18px] border border-[#E6E1D5] bg-white p-2 shadow-[0_20px_40px_-24px_rgba(13,13,11,0.25)]">
+          <form action={`${SHOP}/search`} role="search" className="flex w-full min-w-0 flex-row flex-nowrap items-center gap-2 rounded-[18px] border border-[#E6E1D5] bg-white p-2 shadow-[0_20px_40px_-24px_rgba(13,13,11,0.25)]">
             <label htmlFor="hero-q" className="sr-only">Search products</label>
-            <input id="hero-q" name="q" type="search" placeholder="Search products" className="min-h-12 min-w-0 flex-[1_1_240px] bg-transparent px-3.5 text-base outline-none" />
-            <button type="submit" className="min-h-12 rounded-xl bg-ink px-6 text-[15px] font-semibold text-white">Search</button>
+            <input id="hero-q" name="q" type="search" placeholder="Search products" className="h-12 w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent px-3.5 text-base shadow-none outline-none ring-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0" />
+            <button type="submit" className="min-h-12 shrink-0 rounded-xl bg-ink px-6 text-[15px] font-semibold text-white">Search</button>
           </form>
           <ul className="flex flex-wrap gap-x-8 gap-y-3 text-sm text-[#4A4740]">
             {["Pay in Naira", "Photo QC before dispatch", "Buyer protection on every order"].map((t) => (
@@ -225,7 +207,7 @@ export default function StoreHome() {
               <ul className="flex flex-col gap-2.5 text-[15px]">
                 {p.items.map((it) => <li key={it} className="flex gap-2"><Check aria-hidden size={18} className={p.featured ? "text-[#D9B866]" : "text-[#0F5C45]"} />{it}</li>)}
               </ul>
-              <Link href="/store/seller" className={`mt-auto rounded-[14px] p-3.5 text-center text-[15px] font-semibold ${p.featured ? "bg-[#D9B866] text-ink" : "border border-ink"}`}>{p.name === "Free" ? "Start free" : `Choose ${p.name}`}</Link>
+              <Link href="/sign-in?next=/store/seller" className={`mt-auto rounded-[14px] p-3.5 text-center text-[15px] font-semibold ${p.featured ? "bg-[#D9B866] text-ink" : "border border-ink"}`}>{p.name === "Free" ? "Start free" : `Choose ${p.name}`}</Link>
             </div>
           ))}
         </div>

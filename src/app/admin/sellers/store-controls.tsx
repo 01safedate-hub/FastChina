@@ -69,6 +69,19 @@ export function StoreControls({ store }: { store: AdminStore }) {
           <button type="button" disabled={busy || !refs[p.id]} className={btn} onClick={() => run(() => markPayoutPaid(p.id, refs[p.id]))}>Mark paid</button>
         </div>
       ))}
+      {store.adjustments.length > 0 && (
+        <div className="rounded-md border border-[#F0B4B4] bg-[#FFF7F7] p-3">
+          <strong className="text-sm">Refund adjustments to recover from future earnings</strong>
+          <ul className="mt-2 flex flex-col gap-2">
+            {store.adjustments.map((a) => (
+              <li key={a.id} className="flex flex-wrap justify-between gap-2 text-xs">
+                <span>Created {new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} · {naira(a.applied_ngn)} applied</span>
+                <strong>{naira(a.outstanding_ngn)} outstanding of {naira(a.amount_ngn)}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {msg && <p role="status" className="text-[#5B6170]">{msg}</p>}
     </div>
   );

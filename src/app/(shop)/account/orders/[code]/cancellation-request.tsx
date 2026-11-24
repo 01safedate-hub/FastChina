@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { requestOrderCancellation } from "../../../actions";
@@ -49,8 +50,8 @@ export function CancellationRequest({ code, request }: {
         </div>
       ) : (
         <>
-          <p className="mt-1 text-xs leading-relaxed text-muted">Under our <a href="/legal/terms" className="font-semibold underline">Terms</a>, you can request cancellation before FastChina buys the item from the factory. Our team checks the order stage before approving it. Submitting a request does not cancel the order immediately.</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted">If approved, the Refunds policy says paid amounts for signed-in customers are returned to the FastChina wallet straight away. See the <a href="/legal/refunds" className="font-semibold underline">Refunds policy</a>.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">Under our <Link href="/legal/terms" className="font-semibold underline">Terms</Link>, you can request cancellation before FastChina buys the item from the factory. Our team checks the order stage before approving it. Submitting a request does not cancel the order immediately.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">If approved, the Refunds policy says paid amounts for signed-in customers are returned to the FastChina wallet straight away. See the <Link href="/legal/refunds" className="font-semibold underline">Refunds policy</Link>.</p>
           {!open ? (
             <button type="button" onClick={() => setOpen(true)} className="mt-3 min-h-10 rounded-full bg-red-600 px-4 text-xs font-bold text-white transition-colors hover:bg-red-700">Request cancellation</button>
           ) : (

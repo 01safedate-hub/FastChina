@@ -18,8 +18,10 @@ type GroupOrder = LinkProgress & {
 export function GroupOrdersList({ orders }: { orders: GroupOrder[] }) {
   const [items, setItems] = useState(orders);
   const [copied, setCopied] = useState<string | null>(null);
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
+    const clock = window.setInterval(() => setNow(Date.now()), 1000);
     const timer = window.setInterval(async () => {
       if (document.visibilityState !== "visible") return;
       const refreshed = await Promise.all(orders.map(async (item) => {
@@ -28,7 +30,7 @@ export function GroupOrdersList({ orders }: { orders: GroupOrder[] }) {
       }));
       setItems((current) => current.map((item) => refreshed.find((next) => next?.code === item.code) ? { ...item, ...refreshed.find((next) => next?.code === item.code)! } : item));
     }, 10000);
-    return () => window.clearInterval(timer);
+    return () => { window.clearInterval(timer); window.clearInterval(clock); };
   }, [orders]);
 
   const shareUrl = (code: string) => `${window.location.origin}/c/${encodeURIComponent(code)}`;
@@ -57,7 +59,7 @@ export function GroupOrdersList({ orders }: { orders: GroupOrder[] }) {
       {items.map((item) => {
         const remaining = Math.max(0, item.target - item.raised);
         const settled = item.settledAt !== null;
-        const expired = settled || (new Date(item.expires_at).getTime() <= Date.now() && remaining > 0);
+        const expired = settled || (new Date(item.expires_at).getTime() <= now && remaining > 0);
         const complete = remaining === 0 && !settled;
         const url = `/c/${encodeURIComponent(item.code)}`;
         return (

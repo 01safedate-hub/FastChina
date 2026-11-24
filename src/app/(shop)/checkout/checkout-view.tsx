@@ -37,6 +37,7 @@ export function CheckoutView() {
   const [mode, setMode] = useState<Mode>(initial === "small" || initial === "group" ? initial : "full");
   const { items, remove } = useCart();
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [placing, startPlacing] = useTransition();
   const [placeMsg, setPlaceMsg] = useState<string | null>(null);
   const promo = useLivePromo();
@@ -77,7 +78,7 @@ export function CheckoutView() {
     return () => { live = false; };
   }, [LISTED]);
   const [method, setMethod] = useState<"paystack" | "flutterwave">("paystack");
-  const [email, setEmail] = useState("");
+
   // Pay small small: the first payment the customer chose (₦).
   const [plan, setPlan] = useState(0);
   const [usePoints, setUsePoints] = useState(false);

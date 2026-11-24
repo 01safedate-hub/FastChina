@@ -139,12 +139,13 @@ export interface AdminStore {
   id: string; slug: string; alias: string | null; name: string; plan: string; plan_renews_at: string | null; status: string; lifetime_sales_ngn: number;
   custom_domain: string | null; domain_verified: boolean; created_at: string; products: number; owner: string | null;
   payouts: { id: string; amount_ngn: number; items: number; status: string; created_at: string; bank_snapshot: { bank?: string; account?: string; name?: string } }[];
+  adjustments: { id: string; amount_ngn: number; applied_ngn: number; outstanding_ngn: number; created_at: string }[];
 }
 
 export async function listStores(q?: string): Promise<AdminStore[] | null> {
   if (!hasSupabase) return null;
   const db = secretDb();
-  let query = db.from("stores").select("id, slug, alias, name, plan, plan_renews_at, status, lifetime_sales_ngn, custom_domain, domain_verified, created_at, owner_id, store_products(count), seller_payouts(id, amount_ngn, items, status, created_at, bank_snapshot)")
+  let query = db.from("stores").select("id, slug, alias, name, plan, plan_renews_at, status, lifetime_sales_ngn, custom_domain, domain_verified, created_at, owner_id, store_products(count), seller_payouts(id, amount_ngn, items, status, created_at, bank_snapshot), seller_payout_adjustments(id, amount_ngn, created_at, seller_payout_adjustment_applications(amount_ngn))")
     .order("created_at", { ascending: false }).limit(100);
   if (q?.trim()) query = query.or(`slug.ilike.%${q.trim().replace(/[^a-z0-9-]/gi, "")}%,name.ilike.%${q.trim().replace(/[%,()]/g, "")}%`);
   const { data, error } = await query;
@@ -154,7 +155,13 @@ export async function listStores(q?: string): Promise<AdminStore[] | null> {
   return (data ?? []).map((s) => ({
     ...s, owner: email.get(s.owner_id) ?? null,
     products: (s.store_products as unknown as { count: number }[])[0]?.count ?? 0,
-    payouts: ((s.seller_payouts ?? []) as AdminStore["payouts"]).filter((p) => p.status !== "paid"),
+    payouts: ((s.seller_payouts ?? []) as AdminStore["payouts"]).filter((p) => p.status === "pending"),
+    adjustments: ((s.seller_payout_adjustments ?? []) as { id: string; amount_ngn: number; created_at: string; seller_payout_adjustment_applications: { amount_ngn: number }[] }[])
+      .map((a) => {
+        const applied_ngn = a.seller_payout_adjustment_applications.reduce((sum, x) => sum + x.amount_ngn, 0);
+        return { id: a.id, amount_ngn: a.amount_ngn, applied_ngn, outstanding_ngn: a.amount_ngn - applied_ngn, created_at: a.created_at };
+      })
+      .filter((a) => a.outstanding_ngn > 0),
   })) as AdminStore[];
 }
 

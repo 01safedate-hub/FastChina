@@ -9,13 +9,17 @@ import { type PlanKey, PLANS, sellerNet, storePrice } from "@/lib/dropship/plans
 import { cn } from "@/lib/format";
 import { call } from "@/lib/net";
 import { type MyListing, removeListing, saveListing } from "../actions";
+import { loadSellerProductPage } from "./catalog-actions";
 import { btn, ngn } from "../_ui/ui";
 
 const DEFAULT_MARKUP = 25;
 
-export function ProductsManager({ catalog, listings: initial, plan }: { catalog: Product[]; listings: MyListing[]; plan: PlanKey }) {
+export function ProductsManager({ catalog: initialCatalog, nextCursor: initialCursor, listings: initial, plan }: { catalog: Product[]; nextCursor: string | null; listings: MyListing[]; plan: PlanKey }) {
   const [tab, setTab] = useState<"mine" | "add">(initial.length ? "mine" : "add");
   const [listings, setListings] = useState(initial);
+  const [catalog, setCatalog] = useState(initialCatalog);
+  const [cursor, setCursor] = useState(initialCursor);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -28,6 +32,23 @@ export function ProductsManager({ catalog, listings: initial, plan }: { catalog:
   const mine = new Set(listings.map((l) => l.slug));
   const cats = ["all", ...new Set(catalog.map((p) => p.category))];
   const shown = catalog.filter((p) => !mine.has(p.slug) && (cat === "all" || p.category === cat) && (!q || p.name.toLowerCase().includes(q.toLowerCase())));
+
+  const loadMore = async () => {
+    if (!cursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await loadSellerProductPage(cursor);
+      setCatalog((current) => {
+        const known = new Set(current.map((product) => product.slug));
+        return [...current, ...page.products.filter((product) => !known.has(product.slug))];
+      });
+      setCursor(page.nextCursor);
+    } catch {
+      setMsg({ ok: false, text: "Could not load more products. Please try again." });
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const save = (l: MyListing, note = "Saved") =>
     start(async () => {
@@ -127,6 +148,14 @@ export function ProductsManager({ catalog, listings: initial, plan }: { catalog:
             })}
             {shown.length === 0 && <p className="col-span-full flex items-center justify-center gap-2 p-8 text-[#8A8A93]"><Check aria-hidden size={16} /> Nothing else matches.</p>}
           </div>
+          {cursor && (
+            <div className="flex justify-center pt-2">
+              <button type="button" onClick={loadMore} disabled={loadingMore}
+                className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/15 px-6 text-[13px] font-bold text-white transition-colors hover:bg-white/10 disabled:opacity-50">
+                {loadingMore ? <><Loader2 aria-hidden size={16} className="animate-spin" /> Loading products…</> : "Load 12 more products"}
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

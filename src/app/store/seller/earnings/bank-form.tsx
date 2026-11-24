@@ -40,7 +40,7 @@ export function BankForm({ initial }: { initial: { bank_name: string | null; acc
       </label>
       {msg && <p role="status" className={cn("text-[13px] font-semibold", msg.ok ? "text-[#3DDC84]" : "text-[#FF8A8A]")}>{msg.text}</p>}
       <button type="submit" disabled={busy} className={btn.primary}>Save account</button>
-      <p className="text-[12px] text-[#6B6B73]">Payouts only go to an account in your name. We check the name matches before the first payout.</p>
+      <p className="text-[12px] text-[#6B6B73]">Use a bank account in your name. FastChina staff review the payout details before the first transfer.</p>
     </form>
   );
 }

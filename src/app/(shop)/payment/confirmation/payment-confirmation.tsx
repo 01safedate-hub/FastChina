@@ -46,7 +46,6 @@ export function PaymentConfirmation() {
     try { last4 = sessionStorage.getItem(`fc-track-${code}`); } catch {}
     if (!last4 || !/^\d{4}$/.test(last4)) {
       let cancelled = false;
-      setAttempts(1);
       void (async () => {
         const result = await attempt(() => getOrderPaymentDestination(code));
         if (cancelled) return;

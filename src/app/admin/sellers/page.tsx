@@ -7,8 +7,8 @@ import { StoreControls } from "./store-controls";
 export const metadata: Metadata = { title: "Dropship sellers" };
 
 const SAMPLE: AdminStore[] = [
-  { id: "s1", alias: null, slug: "adas-closet", name: "Ada’s Closet", plan: "free", plan_renews_at: null, status: "active", lifetime_sales_ngn: 1_386_400, custom_domain: null, domain_verified: false, created_at: "2026-11-01T10:00:00Z", products: 14, owner: "ada@example.com", payouts: [{ id: "p1", amount_ngn: 74_900, items: 12, status: "pending", created_at: "2026-11-20T09:00:00Z", bank_snapshot: { bank: "GTBank", account: "0123456789", name: "Ada Okafor" } }] },
-  { id: "s2", alias: null, slug: "volt", name: "VOLT", plan: "pro", plan_renews_at: "2026-12-18T00:00:00Z", status: "active", lifetime_sales_ngn: 4_920_000, custom_domain: "voltng.com", domain_verified: false, created_at: "2026-10-12T10:00:00Z", products: 88, owner: "tunde@example.com", payouts: [] },
+  { id: "s1", alias: null, slug: "adas-closet", name: "Ada’s Closet", plan: "free", plan_renews_at: null, status: "active", lifetime_sales_ngn: 1_386_400, custom_domain: null, domain_verified: false, created_at: "2026-11-01T10:00:00Z", products: 14, owner: "ada@example.com", payouts: [{ id: "p1", amount_ngn: 74_900, items: 12, status: "pending", created_at: "2026-11-20T09:00:00Z", bank_snapshot: { bank: "GTBank", account: "0123456789", name: "Ada Okafor" } }], adjustments: [] },
+  { id: "s2", alias: null, slug: "volt", name: "VOLT", plan: "pro", plan_renews_at: "2026-12-18T00:00:00Z", status: "active", lifetime_sales_ngn: 4_920_000, custom_domain: "voltng.com", domain_verified: false, created_at: "2026-10-12T10:00:00Z", products: 88, owner: "tunde@example.com", payouts: [], adjustments: [] },
 ];
 
 export default async function SellersPage({ searchParams }: PageProps<"/admin/sellers">) {

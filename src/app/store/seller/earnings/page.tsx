@@ -14,17 +14,34 @@ export default async function EarningsPage() {
   if (state.kind !== "live" && state.kind !== "demo") return <Gate state={state} />;
   const d = state.data;
   const p = state.kind === "demo"
-    ? { payouts: [{ id: "1", amount_ngn: 98_400, items: 17, status: "paid", created_at: "2026-11-13T09:00:00Z", paid_at: "2026-11-13T15:20:00Z" }, { id: "2", amount_ngn: 70_600, items: 12, status: "paid", created_at: "2026-11-06T09:00:00Z", paid_at: "2026-11-06T14:02:00Z" }], bank: { bank_name: "GTBank", account_number: "0123456789", account_name: "Ada Okafor" } }
+    ? { payouts: [{ id: "1", amount_ngn: 98_400, items: 17, status: "paid", created_at: "2026-11-13T09:00:00Z", paid_at: "2026-11-13T15:20:00Z" }, { id: "2", amount_ngn: 70_600, items: 12, status: "paid", created_at: "2026-11-06T09:00:00Z", paid_at: "2026-11-06T14:02:00Z" }], adjustments: [], bank: { bank_name: "GTBank", account_number: "0123456789", account_name: "Ada Okafor" } }
     : await getPayouts();
   const fee = PLANS[d.store.plan].feePct;
   return (
-    <Page title="Earnings" subtitle={`You keep your markup minus a ${fee}% fee that covers payments. Paid every Friday for delivered orders.`}>
+    <Page title="Earnings" subtitle={`You keep your markup minus a ${fee}% plan fee. Eligible earnings are batched on Fridays; bank transfers are processed after review.`}>
       <DemoNote demo={state.kind === "demo"} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="On the way" value={ngn(d.earnings.pending)} sub="Paid once delivered" />
-        <Stat label="Ready" value={ngn(d.earnings.available)} sub="In this Friday’s payout" tone="gold" />
+        <Stat label="Ready" value={ngn(d.earnings.available)} sub="Eligible for the next Friday batch" tone="gold" />
         <Stat label="Paid to you" value={ngn(d.earnings.paid)} sub="All time" tone="green" />
       </div>
+      {p?.adjustments.length ? (
+        <Card>
+          <CardTitle>Refund adjustments</CardTitle>
+          <p className="mb-2 text-xs text-[#8A8A93]">These balances are offset against future Friday payouts. No bank transfer is reversed automatically.</p>
+          <ul>
+            {p.adjustments.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-3 border-t border-white/5 py-3 first:border-0">
+                <span>
+                  <strong className="block text-[14px]">Order refund adjustment</strong>
+                  <span className="text-[12px] text-[#8A8A93]">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Lagos" })} · {ngn(a.applied_ngn)} applied</span>
+                </span>
+                <strong className="text-[14px] tabular-nums">{ngn(a.outstanding_ngn)} outstanding</strong>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
       <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
         <Card>
           <CardTitle>Payouts</CardTitle>
