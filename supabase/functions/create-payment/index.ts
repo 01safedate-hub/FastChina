@@ -169,7 +169,7 @@ Deno.serve(async req => {
         if (s.plan !== b.plan) return reply({ok:false,message:"Renewal must match your current plan."},409);
         const {data:settings,error:settingsError} = await db.from("store_subscription_settings")
           .select("auto_renew,renewal_status").eq("store_id",s.id).maybeSingle();
-        if (settingsError || !settings?.auto_renew || settings.renewal_status !== "external_required") {
+        if (settingsError || !settings?.auto_renew || !["external_required","external_checkout_pending"].includes(settings.renewal_status)) {
           return reply({ok:false,message:"External renewal is not currently required for this store."},409);
         }
       }
@@ -184,6 +184,12 @@ Deno.serve(async req => {
       const hosted = await initialize(provider,reference,amount,email,callback.toString(),description);
       const {error:ue} = await db.from("payment_transactions").update({checkout_url:hosted.checkoutUrl}).eq("provider",provider).eq("reference",reference);
       if (ue) throw ue;
+      if (action === "seller_subscription" && b.renewal === true) {
+        const {error:settingsUpdateError} = await db.from("store_subscription_settings")
+          .update({renewal_status:"external_checkout_pending",updated_at:new Date().toISOString()})
+          .eq("store_id",row.store_id).eq("auto_renew",true);
+        if (settingsUpdateError) throw settingsUpdateError;
+      }
       return reply({ok:true,checkoutUrl:hosted.checkoutUrl,reference});
     } catch(e) {
       await db.from("payment_transactions").update({status:"failed"}).eq("provider",provider).eq("reference",reference);
