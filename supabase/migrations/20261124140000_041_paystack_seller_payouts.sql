@@ -10,7 +10,12 @@ alter table public.seller_payouts
   add column if not exists transfer_recipient_code text,
   add column if not exists transfer_status text not null default 'not_started',
   add column if not exists transfer_payload jsonb not null default '{}'::jsonb,
-  add column if not exists transfer_updated_at timestamptz;
+  add column if not exists transfer_updated_at timestamptz,
+  add column if not exists payout_admin_approved_at timestamptz,
+  add column if not exists payout_admin_approved_by uuid references auth.users(id),
+  add column if not exists payout_admin_rejected_at timestamptz,
+  add column if not exists payout_admin_rejected_by uuid references auth.users(id),
+  add column if not exists payout_admin_note text;
 
 -- Keep provider recipient codes and raw provider payloads server-only.
 revoke all (payout_bank_code, payout_account_verified_at, paystack_recipient_code) on table public.stores from anon, authenticated;
@@ -28,6 +33,42 @@ alter table public.seller_payouts add constraint seller_payouts_transfer_status_
 create unique index if not exists seller_payouts_transfer_reference_uidx
   on public.seller_payouts(transfer_reference) where transfer_reference is not null;
 
+
+-- A payout cannot reach the Paystack worker until an authorized admin approves it.
+create or replace function public.review_seller_payout(
+  p_payout uuid, p_actor uuid, p_approve boolean, p_note text default null
+) returns text
+language plpgsql security definer set search_path = '' as $
+declare v_role text; v_status text;
+begin
+  select role into v_role from public.profiles where id=p_actor;
+  if v_role not in ('super_admin','finance') then
+    raise exception 'Only Super Admin or Finance can approve seller payouts' using errcode='42501';
+  end if;
+  if p_note is not null and length(p_note)>500 then raise exception 'Note is too long'; end if;
+  select status into v_status from public.seller_payouts where id=p_payout for update;
+  if v_status is distinct from 'pending' then return 'not_pending'; end if;
+  if p_approve then
+    update public.seller_payouts set payout_admin_approved_at=now(),
+      payout_admin_approved_by=p_actor,payout_admin_rejected_at=null,payout_admin_rejected_by=null,
+      payout_admin_note=nullif(trim(coalesce(p_note,'')),'')
+      where id=p_payout and status='pending' and transfer_status='not_started'
+        and payout_admin_approved_at is null;
+    if not found then return 'already_reviewed'; end if;
+    return 'approved';
+  end if;
+  update public.seller_payouts set status='failed',payout_admin_rejected_at=now(),
+    payout_admin_rejected_by=p_actor,payout_admin_note=nullif(trim(coalesce(p_note,'')),'')
+    where id=p_payout and status='pending' and transfer_status='not_started'
+      and payout_admin_approved_at is null;
+  if not found then return 'already_reviewed'; end if;
+  delete from public.seller_payout_adjustment_applications where payout_id=p_payout;
+  update public.order_items set payout_id=null where payout_id=p_payout;
+  return 'rejected';
+end $;
+revoke execute on function public.review_seller_payout(uuid,uuid,boolean,text) from public,anon,authenticated;
+grant execute on function public.review_seller_payout(uuid,uuid,boolean,text) to service_role;
+
 -- Existing unverified bank details are deliberately not eligible for automatic transfer.
 -- Sellers must re-confirm their bank using Paystack account resolution before the first automated payout.
 create or replace function public.claim_seller_payout_transfers(p_limit integer default 20)
@@ -41,6 +82,7 @@ begin
     join public.stores s on s.id = sp.store_id
     where sp.status = 'pending'
       and sp.transfer_status = 'not_started'
+      and sp.payout_admin_approved_at is not null
       and s.status <> 'suspended'
       and s.payout_account_verified_at is not null
       and s.paystack_recipient_code is not null
