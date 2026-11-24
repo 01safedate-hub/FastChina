@@ -88,7 +88,7 @@ export default function StoreHome() {
           <p className="max-w-[520px] text-lg leading-relaxed text-[#4A4740]">Start a dropshipping store in Nigeria for free, buy at factory prices with free shipping, or move containers by sea. One account, three ways to import from China.</p>
           <form action={`${SHOP}/search`} role="search" className="flex w-full min-w-0 flex-row flex-nowrap items-center gap-2 rounded-[18px] border border-[#E6E1D5] bg-white p-2 shadow-[0_20px_40px_-24px_rgba(13,13,11,0.25)]">
             <label htmlFor="hero-q" className="sr-only">Search products</label>
-            <input id="hero-q" name="q" type="search" placeholder="Search products" className="h-12 w-0 min-w-0 flex-1 border-0 bg-transparent px-3.5 text-base outline-none focus:ring-0" />
+            <input id="hero-q" name="q" type="search" placeholder="Search products" className="h-12 w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent px-3.5 text-base shadow-none outline-none ring-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0" />
             <button type="submit" className="min-h-12 shrink-0 rounded-xl bg-ink px-6 text-[15px] font-semibold text-white">Search</button>
           </form>
           <ul className="flex flex-wrap gap-x-8 gap-y-3 text-sm text-[#4A4740]">
