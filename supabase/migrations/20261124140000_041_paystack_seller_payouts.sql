@@ -11,6 +11,14 @@ alter table public.seller_payouts
   add column if not exists transfer_payload jsonb not null default '{}'::jsonb,
   add column if not exists transfer_updated_at timestamptz;
 
+-- Keep provider recipient codes and raw provider payloads server-only.
+revoke all (payout_bank_code, payout_account_verified_at, paystack_recipient_code) on table public.stores from anon, authenticated;
+revoke all on table public.seller_payouts from anon;
+revoke select, insert, update, delete on table public.seller_payouts from authenticated;
+grant select (id, store_id, amount_ngn, items, status, reference, created_at, paid_at,
+              transfer_reference, transfer_status, transfer_updated_at)
+  on table public.seller_payouts to authenticated;
+
 alter table public.seller_payouts drop constraint if exists seller_payouts_status_check;
 alter table public.seller_payouts add constraint seller_payouts_status_check
   check (status = any (array['pending','processing','awaiting_approval','paid','failed','needs_review']::text[]));
