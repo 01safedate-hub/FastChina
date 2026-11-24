@@ -112,3 +112,22 @@ export async function getSellerSubscriptionPayments(): Promise<SellerSubscriptio
   if (error) throw new Error(`Subscription history: ${error.message}`);
   return (data ?? []) as SellerSubscriptionPayment[];
 }
+
+
+export interface SellerSubscriptionRenewalSettings {
+  auto_renew: boolean;
+  renewal_status: "manual" | "wallet_ready" | "external_required" | "renewed";
+  wallet_ngn: number;
+  plan_renews_at: string | null;
+}
+
+/** Owner-scoped subscription renewal settings and current wallet balance. */
+export async function getSellerSubscriptionRenewalSettings(): Promise<SellerSubscriptionRenewalSettings | null> {
+  if (!hasSupabase) return null;
+  const user = await getSessionUser();
+  if (!user) return null;
+  const { data, error } = await (await userDb()).rpc("my_subscription_renewal_settings");
+  if (error) throw new Error(`Subscription renewal settings: ${error.message}`);
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? row as SellerSubscriptionRenewalSettings : null;
+}
