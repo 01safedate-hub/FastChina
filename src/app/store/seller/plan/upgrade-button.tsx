@@ -5,14 +5,14 @@ import { call } from "@/lib/net";
 import { requestUpgrade } from "../actions";
 import { btn } from "../_ui/ui";
 
-export function UpgradeButton({ plan, label, featured }: { plan: "pro" | "elite"; label: string; featured?: boolean }) {
+export function UpgradeButton({ plan, label, featured, renewal = false }: { plan: "pro" | "elite"; label: string; featured?: boolean; renewal?: boolean }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [provider, setProvider] = useState<"paystack" | "flutterwave">("paystack");
   const [busy, start] = useTransition();
 
   function upgrade() {
     start(async () => {
-      const result = await call(() => requestUpgrade(plan, provider));
+      const result = await call(() => requestUpgrade(plan, provider, renewal));
       setMsg(result.message);
       if (result.ok && result.checkoutUrl) window.location.assign(result.checkoutUrl);
     });
