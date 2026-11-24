@@ -67,7 +67,7 @@ export async function getSellerOrders(): Promise<SellerOrderRow[] | null> {
   return [...byOrder.values()];
 }
 
-export interface Payout { id: string; amount_ngn: number; items: number; status: string; created_at: string; paid_at: string | null }
+export interface Payout { id: string; amount_ngn: number; items: number; status: string; transfer_status: string; transfer_reference: string | null; created_at: string; paid_at: string | null }
 export interface SellerPayoutAdjustment { id: string; amount_ngn: number; applied_ngn: number; outstanding_ngn: number; reason: string; created_at: string }
 
 export async function getPayouts(): Promise<{ payouts: Payout[]; adjustments: SellerPayoutAdjustment[]; bank: { bank_name: string | null; account_number: string | null; account_name: string | null } } | null> {
@@ -76,7 +76,7 @@ export async function getPayouts(): Promise<{ payouts: Payout[]; adjustments: Se
   if (!user) return null;
   const db = await userDb();
   const [{ data: payouts }, { data: bank }, { data: adjustments, error: adjustmentError }] = await Promise.all([
-    db.from("seller_payouts").select("id, amount_ngn, items, status, created_at, paid_at").order("created_at", { ascending: false }).limit(50),
+    db.from("seller_payouts").select("id, amount_ngn, items, status, transfer_status, transfer_reference, created_at, paid_at").order("created_at", { ascending: false }).limit(50),
     // Bank columns aren't readable through the table (migration 023); the owner gets them from this function.
     db.rpc("my_payout_account").maybeSingle<{ bank_name: string | null; account_number: string | null; account_name: string | null }>(),
     db.from("seller_payout_adjustments").select("id, amount_ngn, reason, created_at, seller_payout_adjustment_applications(amount_ngn)").order("created_at", { ascending: false }).limit(50),
