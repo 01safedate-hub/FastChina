@@ -36,7 +36,7 @@ language plpgsql security definer set search_path = '' as $$
 declare p record; v_ref text;
 begin
   for p in
-    select sp.id, sp.store_id, sp.amount_ngn, s.paystack_recipient_code
+    select sp.id, sp.store_id, sp.amount_ngn, s.paystack_recipient_code, s.bank_name, s.account_number, s.account_name
     from public.seller_payouts sp
     join public.stores s on s.id = sp.store_id
     where sp.status = 'pending'
@@ -52,9 +52,7 @@ begin
     update public.seller_payouts sp
       set status='processing', transfer_status='processing',
           transfer_reference=v_ref, transfer_recipient_code=p.paystack_recipient_code,
-          bank_snapshot=jsonb_build_object('bank',(select bank_name from public.stores where id=p.store_id),
-            'account',(select account_number from public.stores where id=p.store_id),
-            'name',(select account_name from public.stores where id=p.store_id)),
+          bank_snapshot=jsonb_build_object('bank',p.bank_name,'account',p.account_number,'name',p.account_name),
           transfer_updated_at=now()
       where sp.id=p.id;
     payout_id := p.id; amount_ngn := p.amount_ngn; reference := v_ref;
