@@ -35,3 +35,13 @@ The current fallback is an external hosted checkout that the seller must complet
 - `20261125130000_037_subscription_renewal_retry_and_external_completion.sql`: retry after wallet top-up and renewal-status reconciliation after verified external payment.\n- `20261125140000_038_run_wallet_renewals_before_expiry_sweep.sql`: run wallet renewal processing before the existing three-day expiry/grace-period downgrade.\n- `20261125150000_039_prevent_wallet_and_external_renewal_double_charge.sql`: pause wallet retries while an external renewal checkout is active.
 
 Existing sellers are not automatically enrolled. They must enable the setting from Manage subscription.
+
+## Uncompleted subscription checkout expiry
+
+- Every new seller subscription checkout receives a 24-hour `expires_at` timestamp.
+- A five-minute cron job marks unpaid `seller_subscription` transactions as `cancelled` once the 24-hour window has elapsed.
+- Existing pending seller subscription payments are backfilled to expire 24 hours after their original creation time.
+- Checkout creation first expires stale subscription transactions and will not reuse an expired checkout URL.
+- Server-side payment recording checks the expiry timestamp under a row lock. A late success callback cannot activate a subscription after the payment window has expired.
+- Order payments and Group Pay contributions are not changed by this subscription-only expiry rule.
+- Provider checkout URLs are hosted by Paystack/Flutterwave. The database cancellation blocks FastChina activation, but does not itself revoke a provider-hosted URL or guarantee a provider-side refund if a payer completes an old link after expiry.
