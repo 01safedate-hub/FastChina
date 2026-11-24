@@ -138,7 +138,7 @@ export async function getOutbox(status?: string): Promise<{ rows: OutboxRow[]; c
 export interface AdminStore {
   id: string; slug: string; alias: string | null; name: string; plan: string; plan_renews_at: string | null; status: string; lifetime_sales_ngn: number;
   custom_domain: string | null; domain_verified: boolean; created_at: string; products: number; owner: string | null;
-  payouts: { id: string; amount_ngn: number; items: number; status: string; created_at: string; payout_admin_approved_at: string | null; bank_snapshot: { bank?: string; account?: string; name?: string } }[];
+  payouts: { id: string; amount_ngn: number; items: number; status: string; created_at: string; payout_admin_approved_at?: string | null; bank_snapshot: { bank?: string; account?: string; name?: string } }[];
   adjustments: { id: string; amount_ngn: number; applied_ngn: number; outstanding_ngn: number; created_at: string }[];
 }
 
