@@ -115,7 +115,9 @@ Deno.serve(async (req: Request) => {
           reference: job.reference, reason: `FastChina seller payout ${job.payout_id}`, currency: "NGN",
         }) });
         const providerStatus = String(result?.status ?? "pending").toLowerCase();
-        const state = providerStatus === "success" ? "success" : providerStatus === "otp" ? "awaiting_approval" : "processing";
+        // Never mark a payout paid from the initiation response alone. Final settlement
+        // is accepted only after the transfer verify endpoint or signed webhook confirms it.
+        const state = providerStatus === "otp" ? "awaiting_approval" : "processing";
         await db.rpc("set_seller_payout_transfer_state", { p_reference: job.reference, p_status: state, p_transfer_code: result?.transfer_code ?? null, p_payload: result });
         submitted++;
       } catch (error) {
