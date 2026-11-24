@@ -207,7 +207,7 @@ export default function StoreHome() {
               <ul className="flex flex-col gap-2.5 text-[15px]">
                 {p.items.map((it) => <li key={it} className="flex gap-2"><Check aria-hidden size={18} className={p.featured ? "text-[#D9B866]" : "text-[#0F5C45]"} />{it}</li>)}
               </ul>
-              <Link href="/store/seller" className={`mt-auto rounded-[14px] p-3.5 text-center text-[15px] font-semibold ${p.featured ? "bg-[#D9B866] text-ink" : "border border-ink"}`}>{p.name === "Free" ? "Start free" : `Choose ${p.name}`}</Link>
+              <Link href="/sign-in?next=/store/seller" className={`mt-auto rounded-[14px] p-3.5 text-center text-[15px] font-semibold ${p.featured ? "bg-[#D9B866] text-ink" : "border border-ink"}`}>{p.name === "Free" ? "Start free" : `Choose ${p.name}`}</Link>
             </div>
           ))}
         </div>
