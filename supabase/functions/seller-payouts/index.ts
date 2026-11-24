@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
     // Ambiguous submissions in needs_review are deliberately not re-submitted.
     const { data: inFlight, error: inFlightError } = await db.from("seller_payouts")
       .select("id,transfer_reference,amount_ngn")
-      .in("transfer_status", ["processing","awaiting_approval"])
+      .in("transfer_status", ["processing","awaiting_approval","needs_review"])
       .not("transfer_reference","is",null)
       .order("transfer_updated_at",{ascending:true}).limit(50);
     if (inFlightError) throw inFlightError;
