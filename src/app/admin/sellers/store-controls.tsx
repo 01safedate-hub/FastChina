@@ -6,14 +6,13 @@ import type { AdminStore } from "@/lib/data/admin";
 import { naira } from "@/lib/format";
 import { call } from "@/lib/net";
 import { storeAddress } from "@/lib/dropship/plans";
-import { markPayoutPaid, reviewSellerPayout, setDomainVerified, setStoreAlias, setStorePlan, setStoreStatus } from "../actions";
+import { reviewSellerPayout, setDomainVerified, setStoreAlias, setStorePlan, setStoreStatus } from "../actions";
 
 export function StoreControls({ store }: { store: AdminStore }) {
   const router = useRouter();
   const [plan, setPlan] = useState(store.plan);
   const [months, setMonths] = useState(1);
   const [alias, setAlias] = useState(store.alias ?? "");
-  const [refs, setRefs] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, start] = useTransition();
   const run = (fn: () => Promise<{ ok: boolean; message: string }>) =>
