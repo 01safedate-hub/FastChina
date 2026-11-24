@@ -4,7 +4,8 @@ import { getSeller, getSellerSubscriptionPayments, getSellerSubscriptionRenewalS
 import { FREE_SALES_LIMIT, PLANS } from "@/lib/dropship/plans";
 import { DemoNote, Gate } from "../_ui/gate";
 import { Card, Meter, ngn, Page } from "../_ui/ui";
-import { UpgradeButton } from "./upgrade-button";\nimport { RenewalSettings } from "./renewal-settings";
+import { UpgradeButton } from "./upgrade-button";
+import { RenewalSettings } from "./renewal-settings";
 
 export const metadata: Metadata = { title: "Manage subscription" };
 
@@ -17,7 +18,8 @@ export default async function PlanPage() {
   const state = await getSeller();
   if (state.kind !== "live" && state.kind !== "demo") return <Gate state={state} />;
   const s = state.data.store;
-  const [payments, renewal] = state.kind === "live" ? await Promise.all([getSellerSubscriptionPayments(), getSellerSubscriptionRenewalSettings()]) : [null, null];
+  const payments = state.kind === "live" ? await getSellerSubscriptionPayments() : null;
+  const renewal = state.kind === "live" ? await getSellerSubscriptionRenewalSettings() : null;
   const current = PLANS[s.plan];
 
   return (
@@ -46,7 +48,24 @@ Your plan is activated only after verified payment and expires according to the 
         )}
       </Card>
 
-      {s.plan !== "free" && renewal && (\n        <Card>\n          <div className="mb-3">\n            <h2 className="text-lg font-black">Automatic renewal</h2>\n            <p className="mt-1 text-sm text-[#A1A1AA]">We check your FastChina wallet first. If it cannot cover the full renewal, you will be asked to complete payment through Paystack or Flutterwave.</p>\n          </div>\n          <RenewalSettings enabled={renewal.auto_renew} status={renewal.renewal_status} walletBalance={renewal.wallet_ngn} />\n          {renewal.renewal_status === "external_required" && (\n            <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3">\n              <p className="text-sm font-bold text-amber-200">External payment required</p>\n              <p className="mt-1 text-xs leading-5 text-amber-100/80">Your wallet did not have enough funds for the last renewal attempt. Complete a secure external payment below.</p>\n              <div className="mt-3"><UpgradeButton plan={s.plan} label={`Renew ${current.name}`} renewal /></div>\n            </div>\n          )}\n        </Card>\n      )}\n\n      {s.plan === "free" && (
+      {s.plan !== "free" && renewal && (
+        <Card>
+          <div className="mb-3">
+            <h2 className="text-lg font-black">Automatic renewal</h2>
+            <p className="mt-1 text-sm text-[#A1A1AA]">We check your FastChina wallet first. If it cannot cover the full renewal, you will be asked to complete payment through Paystack or Flutterwave.</p>
+          </div>
+          <RenewalSettings enabled={renewal.auto_renew} status={renewal.renewal_status} walletBalance={renewal.wallet_ngn} />
+          {renewal.renewal_status === "external_required" && (
+            <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3">
+              <p className="text-sm font-bold text-amber-200">External payment required</p>
+              <p className="mt-1 text-xs leading-5 text-amber-100/80">Your wallet did not have enough funds for the last renewal attempt. Complete a secure external payment below.</p>
+              <div className="mt-3"><UpgradeButton plan={s.plan} label={`Renew ${current.name}`} renewal /></div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {s.plan === "free" && (
         <Card>
           <div className="mb-2 flex justify-between gap-3 text-[14px]"><strong>Free-plan sales allowance</strong><span className="tabular-nums text-[#A1A1AA]">{ngn(s.lifetime_sales)} / {ngn(FREE_SALES_LIMIT)}</span></div>
           <Meter value={s.lifetime_sales} max={FREE_SALES_LIMIT} label="Lifetime sales towards the Free-plan limit" tone={s.lifetime_sales >= FREE_SALES_LIMIT * 0.9 ? "red" : "gold"} />
@@ -71,7 +90,9 @@ Your plan is activated only after verified payment and expires according to the 
                   {p.perks.map((perk) => <li key={perk} className="flex gap-2"><span aria-hidden className="text-[#3DDC84]">✓</span>{perk}</li>)}
                 </ul>
                 {currentPlan
-                  ? <span className="flex min-h-11 items-center justify-center rounded-full border border-white/15 text-[14px] font-bold text-[#A1A1AA]">Current plan</span>
+                  ? renewal?.renewal_status === "external_required" && s.plan !== "free" && renewal.auto_renew
+                    ? <UpgradeButton plan={s.plan} label={`Renew ${p.name}`} renewal />
+                    : <span className="flex min-h-11 items-center justify-center rounded-full border border-white/15 text-[14px] font-bold text-[#A1A1AA]">Current plan</span>
                   : p.key === "free" ? <span className="text-center text-xs text-[#777780]">Contact support to change to Free.</span>
                   : <UpgradeButton plan={p.key} label={`Get ${p.name}`} featured={featured} />}
               </section>
