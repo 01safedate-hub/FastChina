@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProductsBySlugs } from "@/lib/data/catalog";
 
-export const dynamic = "force-dynamic";
-
 export async function POST(request: Request) {
   let body: unknown;
   try {
