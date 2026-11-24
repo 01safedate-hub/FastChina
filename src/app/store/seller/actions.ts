@@ -61,17 +61,47 @@ export async function updateStore(patch: Record<string, unknown>): Promise<Resul
   return { ok: true, message: "Saved" };
 }
 
-export async function saveBank(input: { bank_name: unknown; account_number: unknown; account_name: unknown }): Promise<Result> {
-  if (!hasSupabase) return DEMO;
-  const m = await myStore();
-  if (!m) return { ok: false, message: "Open a store first." };
-  const acct = typeof input.account_number === "string" ? input.account_number.replace(/\D/g, "") : "";
-  if (acct.length !== 10) return { ok: false, message: "Account numbers are 10 digits (NUBAN)." };
-  const bank = typeof input.bank_name === "string" ? input.bank_name.trim().slice(0, 60) : "";
+async function payoutProviderRequest(body: Record<string, unknown>) {
+  const user = await getSessionUser();
+  if (!user) return { ok: false as const, message: "Sign in to manage your payout account." };
+  const { data } = await (await userDb()).auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return { ok: false as const, message: "Your session expired. Sign in again." };
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/seller-payouts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body), cache: "no-store",
+  });
+  const result = await response.json().catch(() => ({}));
+  return response.ok ? { ok: true as const, result } : { ok: false as const, message: typeof result.error === "string" ? result.error : "Paystack could not verify this payout account." };
+}
+
+export async function getPayoutBanks(): Promise<{ ok: boolean; message?: string; banks?: { name: string; code: string }[] }> {
+  if (!hasSupabase) return { ok: false, message: "Payout bank verification is unavailable in demo mode." };
+  const r = await payoutProviderRequest({ action: "banks" });
+  if (!r.ok) return r;
+  return { ok: true, banks: Array.isArray(r.result.banks) ? r.result.banks : [] };
+}
+
+export async function verifyPayoutBank(input: { account_number: unknown; bank_code: unknown }): Promise<{ ok: boolean; message: string; account_name?: string; bank_name?: string }> {
+  const account = typeof input.account_number === "string" ? input.account_number.replace(/\D/g, "") : "";
+  const bankCode = typeof input.bank_code === "string" ? input.bank_code.trim() : "";
+  if (!/^\d{10}$/.test(account) || !/^\d{2,8}$/.test(bankCode)) return { ok: false, message: "Enter a valid 10-digit account number and choose a bank." };
+  const r = await payoutProviderRequest({ action: "verify_bank", account_number: account, bank_code: bankCode });
+  return r.ok
+    ? { ok: true, message: "Account verified. Confirm the account name before saving.", account_name: String(r.result.account_name ?? ""), bank_name: String(r.result.bank_name ?? "") }
+    : { ok: false, message: r.message };
+}
+
+export async function saveBank(input: { bank_name: unknown; bank_code: unknown; account_number: unknown; account_name: unknown }): Promise<Result> {
+  if (!hasSupabase) return { ok: false, message: "Payout account verification requires a connected database." };
+  const account = typeof input.account_number === "string" ? input.account_number.replace(/\D/g, "") : "";
+  const bankCode = typeof input.bank_code === "string" ? input.bank_code.trim() : "";
+  const bank = typeof input.bank_name === "string" ? input.bank_name.trim().slice(0, 80) : "";
   const name = typeof input.account_name === "string" ? input.account_name.trim().slice(0, 80) : "";
-  if (!bank || !name) return { ok: false, message: "Add your bank and the name on the account." };
-  const { error } = await m.db.from("stores").update({ bank_name: bank, account_number: acct, account_name: name }).eq("id", m.store.id);
-  return error ? { ok: false, message: friendly(error.message) } : { ok: true, message: "Payout account saved" };
+  if (!/^\d{10}$/.test(account) || !/^\d{2,8}$/.test(bankCode) || !bank || !name) return { ok: false, message: "Verify your bank account before saving." };
+  const r = await payoutProviderRequest({ action: "save_bank", bank_name: bank, bank_code: bankCode, account_number: account, confirmed_account_name: name });
+  return r.ok ? { ok: true, message: "Verified payout account saved." } : { ok: false, message: r.message };
 }
 
 export interface MyListing { slug: string; markupType: "pct" | "fixed"; markupValue: number; active: boolean }
