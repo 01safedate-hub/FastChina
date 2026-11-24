@@ -5,9 +5,10 @@
 1. The existing Friday job creates payout batches from eligible seller earnings.
 2. Sellers verify their Nigerian bank account through Paystack Resolve Account Number. The displayed account name must be confirmed before saving.
 3. FastChina creates and stores a Paystack NUBAN transfer recipient. The recipient code and bank code remain server-side.
-4. A five-minute worker claims each eligible pending batch atomically, assigns a stable transfer reference, and initiates one NGN transfer.
-5. A payout is marked paid only after the Paystack transfer verification endpoint or a signed Paystack transfer webhook confirms the final successful status and exact amount/currency.
-6. Failed transfers release their payout item assignments and refund-adjustment applications for a later Friday batch. Reversed transfers are placed in staff review and are never submitted again automatically.
+4. A payout batch remains pending until a Super Admin or Finance admin explicitly approves it in Admin → Dropship sellers. Approval is recorded with the reviewer and timestamp.
+5. Only approved batches can be claimed by the five-minute worker. The worker assigns a stable transfer reference and initiates one NGN transfer.
+6. A payout is marked paid only after the Paystack transfer verification endpoint or a signed Paystack transfer webhook confirms the final successful status and exact amount/currency.
+7. Failed transfers release their payout item assignments and refund-adjustment applications for a later Friday batch. Reversed transfers are placed in staff review and are never submitted again automatically.
 
 ## Required configuration
 
@@ -56,4 +57,4 @@ Run in a non-production Supabase project with Paystack test credentials and disp
 5. Verify the cron job exists and points to the production Supabase URL.
 6. Run the test matrix in test mode before enabling live seller payouts.
 
-The migration and Edge Function code do not initiate any transfer during deployment. Transfers begin only after the scheduled worker is configured and eligible verified payout batches exist.
+The migration and Edge Function code do not initiate any transfer during deployment. Transfers begin only after the scheduled worker is configured, a verified seller bank recipient exists, and a Super Admin or Finance admin approves the payout in Admin → Dropship sellers.
