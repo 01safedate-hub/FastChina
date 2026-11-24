@@ -54,9 +54,11 @@ export function RenewalSettings({ enabled, status, walletBalance }: {
         </button>
       </div>
       <p className="text-xs leading-5 text-[#A1A1AA]">
-        {active
-          ? "At renewal time, FastChina will debit the monthly plan price from your wallet only when the full amount is available. If funds are insufficient, your subscription page will provide external checkout."
-          : "Automatic wallet deductions are off. Your plan will need to be renewed manually before expiry."}
+        {status === "external_checkout_pending"
+          ? "An external checkout is already open for this renewal. Wallet retries are paused for this billing cycle to prevent a duplicate charge. Switch automatic renewal off and on again only if you want to return to wallet-first renewal."
+          : active
+            ? "At renewal time, FastChina will debit the monthly plan price from your wallet only when the full amount is available. If funds are insufficient, your subscription page will provide external checkout."
+            : "Automatic wallet deductions are off. Your plan will need to be renewed manually before expiry."}
       </p>
       {message && <p role="status" className="text-xs text-[#F5C542]">{message}</p>}
     </div>
