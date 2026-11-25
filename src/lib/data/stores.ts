@@ -1,7 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import type { PriceSet, Product } from "@/lib/catalog/types";
-import { getProducts } from "@/lib/data/catalog";
+import { getProductsBySlugs } from "@/lib/data/catalog";
 import { type PlanKey, storePrice, type ThemeKey } from "@/lib/dropship/plans";
 import { hasSupabase } from "@/lib/supabase/env";
 import { publicDb } from "@/lib/supabase/server";
@@ -74,11 +74,24 @@ export function sellerPrices(p: PriceSet, l: Pick<Listing, "markupType" | "marku
 
 /** The store's products, priced at the seller's prices. */
 export async function getStoreProducts(listings: Listing[]): Promise<Product[]> {
-  const all = await getProducts();
-  const bySlug = new Map(all.map((p) => [p.slug, p]));
-  return listings.flatMap((l) => {
-    const p = bySlug.get(l.slug);
-    if (!p) return [];
-    return [{ ...p, prices: sellerPrices(p.prices, l), flash: undefined, badge: undefined, variants: p.variants.map((v) => ({ ...v, prices: sellerPrices(v.prices, l) })) }];
+  // A storefront only needs its own selected products. Do not load the marketplace
+  // catalogue (up to 120 products and all SKU relations) just to render this store.
+  const slugs = [...new Set(listings.map((listing) => listing.slug))].slice(0, 10);
+  if (!slugs.length) return [];
+  const selected = await getProductsBySlugs(slugs);
+  const bySlug = new Map(selected.map((product) => [product.slug, product]));
+  return listings.flatMap((listing) => {
+    const product = bySlug.get(listing.slug);
+    if (!product) return [];
+    return [{
+      ...product,
+      prices: sellerPrices(product.prices, listing),
+      flash: undefined,
+      badge: undefined,
+      variants: product.variants.map((variant) => ({
+        ...variant,
+        prices: sellerPrices(variant.prices, listing),
+      })),
+    }];
   });
 }
