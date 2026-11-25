@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 
 export default function StorefrontError({
@@ -29,9 +30,9 @@ export default function StorefrontError({
       >
         Try again
       </button>
-      <a href="/" className="mt-4 text-sm font-semibold text-neutral-600 underline underline-offset-4">
+      <Link href="/" className="mt-4 text-sm font-semibold text-neutral-600 underline underline-offset-4">
         Return to FastChina
-      </a>
+      </Link>
     </main>
   );
 }
