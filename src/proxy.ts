@@ -45,6 +45,13 @@ export async function proxy(request: NextRequest) {
   const host = (request.headers.get("host") ?? "").split(":")[0].toLowerCase();
   const { pathname } = request.nextUrl;
 
+  // Normalize accidental repeated slashes in public store links before route matching.
+  if (/\/{2,}/.test(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace(/\/{2,}/g, "/");
+    return NextResponse.redirect(url, 308);
+  }
+
   // Cache Components streams dynamic product routes. A notFound() thrown after
   // streaming starts can render the not-found UI with HTTP 200, so validate
   // product slugs here before the route begins rendering.
@@ -104,6 +111,21 @@ export async function proxy(request: NextRequest) {
     // Anything else that isn't ours or a preview host: a seller's own domain.
     if (host && !MAIN_HOSTS.includes(host) && !STORE_HOSTS.includes(host) && !isInfraHost(host)) {
       return rewrite(`/s/${host.replace(/^www\./, "")}${pathname === "/" ? "" : pathname}`);
+    }
+  }
+
+  // Netlify/Vercel preview hosts: also accept the production-style /<store-name> URL.
+  // Keep known application routes on the marketplace instead of treating them as store slugs.
+  const PREVIEW_APP_PAGES = new Set([
+    "account", "admin", "api", "bag", "cart", "categories", "category", "checkout",
+    "c", "d", "deals", "guides", "legal", "notifications", "offline", "payment",
+    "product", "search", "sign-in", "s", "store", "track", "unsubscribe", "wholesale",
+    "wishlist", "why-fastchina",
+  ]);
+  if (isInfraHost(host) && !SHARED.test(pathname) && !pathname.startsWith("/s/")) {
+    const [, first = "", ...rest] = pathname.split("/");
+    if (first && !PREVIEW_APP_PAGES.has(first) && NAME.test(first)) {
+      return rewrite("/s/" + first + (rest.length ? "/" + rest.join("/") : ""));
     }
   }
 
