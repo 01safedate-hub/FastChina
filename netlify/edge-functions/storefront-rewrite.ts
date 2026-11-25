@@ -3,22 +3,24 @@
  *
  * Next.js 16 renamed middleware.ts to proxy.ts and moved Proxy to the Node.js
  * runtime. Netlify's Next.js adapter documents Edge Middleware integration,
- * so this small native Edge Function guarantees that preview/production
- * one-segment store links reach the App Router storefront route.
+ * so this native Edge Function guarantees that preview store links reach the
+ * App Router storefront route even if the adapter does not run Next Proxy.
  */
 const SITE_HOST = "stunning-youtiao-4a78bd.netlify.app";
 const STORE_SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 
 const RESERVED = new Set([
-  "account", "admin", "api", "bag", "cart", "categories", "category",
-  "c", "d", "deals", "guides", "legal", "notifications", "offline",
-  "payment", "product", "search", "sign-in", "s", "store", "track",
-  "unsubscribe", "wholesale", "wishlist", "why-fastchina",
+  "about", "account", "admin", "api", "bag", "blog", "cart", "c", "categories",
+  "category", "contact", "d", "deals", "guides", "legal", "manifest.webmanifest",
+  "notifications", "offline", "opengraph-image", "payment", "pwa", "privacy",
+  "product", "robots.txt", "s", "search", "seller", "sign-in", "sitemap.xml",
+  "store", "terms", "track", "unsubscribe", "wholesale", "why-fastchina",
+  "wishlist", "sw.js",
 ]);
 
 function isFastChinaNetlifyHost(host: string): boolean {
   return host === SITE_HOST ||
-    new RegExp(`^deploy-preview-[0-9]+--${SITE_HOST.replaceAll(".", "\\\\.")}$`).test(host);
+    /^deploy-preview-\d+--stunning-youtiao-4a78bd\.netlify\.app$/.test(host);
 }
 
 export default async function storefrontRewrite(request: Request): Promise<URL | undefined> {
