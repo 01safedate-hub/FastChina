@@ -10,24 +10,19 @@ import type { Product } from "@/lib/catalog/types";
 export function WishlistView() {
   const { slugs } = useWishlist();
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const [settledKey, setSettledKey] = useState<string | null>(null);
+  const [failedKey, setFailedKey] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const slugKey = slugs.join("\u0000");
+  const requestKey = `${slugKey}::${retry}`;
+  const loading = Boolean(slugKey) && settledKey !== requestKey && failedKey !== requestKey;
+  const failed = Boolean(slugKey) && failedKey === requestKey;
 
   useEffect(() => {
     const requested = slugKey ? slugKey.split("\u0000") : [];
     let active = true;
 
-    if (!requested.length) {
-      setProducts([]);
-      setFailed(false);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setFailed(false);
+    if (!requested.length) return;
 
     async function loadSavedProducts() {
       try {
@@ -51,11 +46,11 @@ export function WishlistView() {
             const product = bySlug.get(slug);
             return product ? [product] : [];
           }));
+          setFailedKey(null);
+          setSettledKey(requestKey);
         }
       } catch {
-        if (active) setFailed(true);
-      } finally {
-        if (active) setLoading(false);
+        if (active) setFailedKey(requestKey);
       }
     }
 
@@ -63,7 +58,7 @@ export function WishlistView() {
     return () => {
       active = false;
     };
-  }, [slugKey, retry]);
+  }, [slugKey, retry, requestKey]);
 
   const bySlug = new Map(products.map((product) => [product.slug, product]));
   const saved = slugs.flatMap((slug) => {
