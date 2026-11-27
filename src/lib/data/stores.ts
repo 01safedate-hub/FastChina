@@ -77,7 +77,7 @@ export async function getStore(key: string): Promise<{ store: PublicStore; listi
   }
   if (!s || s.status === "suspended") return null;
 
-  let rows: Array<{ markup_type: "pct" | "fixed"; markup_value: number | string; products: { slug: string; status: string } | null }> = [];
+  let rows: Array<{ markup_type: "pct" | "fixed"; markup_value: number | string; products: Array<{ slug: string; status: string }> }> = [];
   try {
     const result = await db.from("store_products")
       .select("markup_type, markup_value, sort, products!inner(slug, status)")
@@ -93,7 +93,7 @@ export async function getStore(key: string): Promise<{ store: PublicStore; listi
 
   return {
     store: { id: s.id, slug: s.slug, alias: s.alias ?? null, name: s.name, tagline: s.tagline, accent: s.accent, theme: s.theme, plan: s.plan, status: s.status, customDomain: s.domain_verified ? s.custom_domain : null, allowSmallSmall: s.allow_small_small !== false },
-    listings: rows.filter((r) => r.products?.status === "active").map((r) => ({ slug: r.products!.slug, markupType: r.markup_type, markupValue: Number(r.markup_value) })),
+    listings: rows.flatMap((r) => { const product = r.products[0]; return product?.status === "active" ? [{ slug: product.slug, markupType: r.markup_type, markupValue: Number(r.markup_value) }] : []; }),
   };
 }
 
