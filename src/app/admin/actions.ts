@@ -185,6 +185,24 @@ export async function setStoreStatus(storeId: unknown, status: unknown): Promise
   return { ok: true, message: status === "suspended" ? "Store suspended" : "Store reopened" };
 }
 
+/** Finance and Super Admin approval gate before the Paystack worker can submit a payout. */
+export async function reviewSellerPayout(payoutId: unknown, approve: boolean, note?: unknown): Promise<Result> {
+  const me = await requireStaff();
+  if (typeof payoutId !== "string" || !me) return { ok: false, message: "Unknown payout." };
+  if (!hasSupabase) return { ok: true, message: "Demo: not saved." };
+  const { data: profile } = await secretDb().from("profiles").select("role").eq("id", me.id).maybeSingle();
+  if (!["super_admin", "finance"].includes(profile?.role ?? "")) return { ok: false, message: "Only Super Admin or Finance can review seller payouts." };
+  const cleanNote = typeof note === "string" ? note.trim().slice(0, 500) : null;
+  const { data, error } = await secretDb().rpc("review_seller_payout", {
+    p_payout: payoutId, p_actor: me.id, p_approve: approve, p_note: cleanNote,
+  });
+  if (error) return { ok: false, message: error.message };
+  updateTag("stores");
+  if (data === "approved") return { ok: true, message: "Payout approved. It will be submitted to Paystack by the scheduled worker." };
+  if (data === "rejected") return { ok: true, message: "Payout rejected and its items released for a future batch." };
+  return { ok: false, message: "This payout has already been reviewed or is no longer pending." };
+}
+
 /** Records a payout as sent (with the bank transfer reference). */
 export async function markPayoutPaid(payoutId: unknown, reference: unknown): Promise<Result> {
   await requireStaff();

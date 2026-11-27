@@ -67,7 +67,7 @@ export async function getSellerOrders(): Promise<SellerOrderRow[] | null> {
   return [...byOrder.values()];
 }
 
-export interface Payout { id: string; amount_ngn: number; items: number; status: string; created_at: string; paid_at: string | null }
+export interface Payout { id: string; amount_ngn: number; items: number; status: string; transfer_status: string; transfer_reference: string | null; created_at: string; paid_at: string | null }
 export interface SellerPayoutAdjustment { id: string; amount_ngn: number; applied_ngn: number; outstanding_ngn: number; reason: string; created_at: string }
 
 export async function getPayouts(): Promise<{ payouts: Payout[]; adjustments: SellerPayoutAdjustment[]; bank: { bank_name: string | null; account_number: string | null; account_name: string | null } } | null> {
@@ -76,7 +76,7 @@ export async function getPayouts(): Promise<{ payouts: Payout[]; adjustments: Se
   if (!user) return null;
   const db = await userDb();
   const [{ data: payouts }, { data: bank }, { data: adjustments, error: adjustmentError }] = await Promise.all([
-    db.from("seller_payouts").select("id, amount_ngn, items, status, created_at, paid_at").order("created_at", { ascending: false }).limit(50),
+    db.from("seller_payouts").select("id, amount_ngn, items, status, transfer_status, transfer_reference, created_at, paid_at").order("created_at", { ascending: false }).limit(50),
     // Bank columns aren't readable through the table (migration 023); the owner gets them from this function.
     db.rpc("my_payout_account").maybeSingle<{ bank_name: string | null; account_number: string | null; account_name: string | null }>(),
     db.from("seller_payout_adjustments").select("id, amount_ngn, reason, created_at, seller_payout_adjustment_applications(amount_ngn)").order("created_at", { ascending: false }).limit(50),
@@ -111,4 +111,23 @@ export async function getSellerSubscriptionPayments(): Promise<SellerSubscriptio
   const { data, error } = await (await userDb()).rpc("my_subscription_payment_history");
   if (error) throw new Error(`Subscription history: ${error.message}`);
   return (data ?? []) as SellerSubscriptionPayment[];
+}
+
+
+export interface SellerSubscriptionRenewalSettings {
+  auto_renew: boolean;
+  renewal_status: "manual" | "wallet_ready" | "external_required" | "external_checkout_pending" | "renewed";
+  wallet_ngn: number;
+  plan_renews_at: string | null;
+}
+
+/** Owner-scoped subscription renewal settings and current wallet balance. */
+export async function getSellerSubscriptionRenewalSettings(): Promise<SellerSubscriptionRenewalSettings | null> {
+  if (!hasSupabase) return null;
+  const user = await getSessionUser();
+  if (!user) return null;
+  const { data, error } = await (await userDb()).rpc("my_subscription_renewal_settings");
+  if (error) throw new Error(`Subscription renewal settings: ${error.message}`);
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? row as SellerSubscriptionRenewalSettings : null;
 }

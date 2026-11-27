@@ -138,14 +138,14 @@ export async function getOutbox(status?: string): Promise<{ rows: OutboxRow[]; c
 export interface AdminStore {
   id: string; slug: string; alias: string | null; name: string; plan: string; plan_renews_at: string | null; status: string; lifetime_sales_ngn: number;
   custom_domain: string | null; domain_verified: boolean; created_at: string; products: number; owner: string | null;
-  payouts: { id: string; amount_ngn: number; items: number; status: string; created_at: string; bank_snapshot: { bank?: string; account?: string; name?: string } }[];
+  payouts: { id: string; amount_ngn: number; items: number; status: string; created_at: string; payout_admin_approved_at?: string | null; bank_snapshot: { bank?: string; account?: string; name?: string } }[];
   adjustments: { id: string; amount_ngn: number; applied_ngn: number; outstanding_ngn: number; created_at: string }[];
 }
 
 export async function listStores(q?: string): Promise<AdminStore[] | null> {
   if (!hasSupabase) return null;
   const db = secretDb();
-  let query = db.from("stores").select("id, slug, alias, name, plan, plan_renews_at, status, lifetime_sales_ngn, custom_domain, domain_verified, created_at, owner_id, store_products(count), seller_payouts(id, amount_ngn, items, status, created_at, bank_snapshot), seller_payout_adjustments(id, amount_ngn, created_at, seller_payout_adjustment_applications(amount_ngn))")
+  let query = db.from("stores").select("id, slug, alias, name, plan, plan_renews_at, status, lifetime_sales_ngn, custom_domain, domain_verified, created_at, owner_id, store_products(count), seller_payouts(id, amount_ngn, items, status, created_at, bank_snapshot, payout_admin_approved_at), seller_payout_adjustments(id, amount_ngn, created_at, seller_payout_adjustment_applications(amount_ngn))")
     .order("created_at", { ascending: false }).limit(100);
   if (q?.trim()) query = query.or(`slug.ilike.%${q.trim().replace(/[^a-z0-9-]/gi, "")}%,name.ilike.%${q.trim().replace(/[%,()]/g, "")}%`);
   const { data, error } = await query;

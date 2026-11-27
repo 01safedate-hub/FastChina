@@ -1,0 +1,228 @@
+-- Phase 5: Paystack seller disbursements, verified payout accounts and safe transfer reconciliation.
+alter table public.stores
+  add column if not exists payout_bank_code text,
+  add column if not exists payout_account_verified_at timestamptz,
+  add column if not exists paystack_recipient_code text;
+
+alter table public.seller_payouts
+  add column if not exists transfer_reference text,
+  add column if not exists transfer_code text,
+  add column if not exists transfer_recipient_code text,
+  add column if not exists transfer_status text not null default 'not_started',
+  add column if not exists transfer_payload jsonb not null default '{}'::jsonb,
+  add column if not exists transfer_updated_at timestamptz,
+  add column if not exists payout_admin_approved_at timestamptz,
+  add column if not exists payout_admin_approved_by uuid references auth.users(id),
+  add column if not exists payout_admin_rejected_at timestamptz,
+  add column if not exists payout_admin_rejected_by uuid references auth.users(id),
+  add column if not exists payout_admin_note text;
+
+-- Keep provider recipient codes and raw provider payloads server-only.
+revoke all (payout_bank_code, payout_account_verified_at, paystack_recipient_code) on table public.stores from anon, authenticated;
+revoke all on table public.seller_payouts from anon;
+revoke select, insert, update, delete on table public.seller_payouts from authenticated;
+grant select (id, store_id, amount_ngn, items, status, reference, created_at, paid_at,
+              transfer_reference, transfer_status, transfer_updated_at)
+  on table public.seller_payouts to authenticated;
+
+alter table public.seller_payouts drop constraint if exists seller_payouts_status_check;
+alter table public.seller_payouts add constraint seller_payouts_status_check
+  check (status = any (array['pending','processing','awaiting_approval','paid','failed','needs_review']::text[]));
+alter table public.seller_payouts add constraint seller_payouts_transfer_status_check
+  check (transfer_status = any (array['not_started','processing','awaiting_approval','success','failed','reversed','needs_review']::text[]));
+create unique index if not exists seller_payouts_transfer_reference_uidx
+  on public.seller_payouts(transfer_reference) where transfer_reference is not null;
+
+
+-- A payout cannot reach the Paystack worker until an authorized admin approves it.
+create or replace function public.review_seller_payout(
+  p_payout uuid, p_actor uuid, p_approve boolean, p_note text default null
+) returns text
+language plpgsql security definer set search_path = '' as $$
+declare v_role text; v_status text;
+begin
+  select role into v_role from public.profiles where id=p_actor;
+  if coalesce(v_role,'') not in ('super_admin','finance') then
+    raise exception 'Only Super Admin or Finance can approve seller payouts' using errcode='42501';
+  end if;
+  if p_note is not null and length(p_note)>500 then raise exception 'Note is too long'; end if;
+  select status into v_status from public.seller_payouts where id=p_payout for update;
+  if v_status is distinct from 'pending' then return 'not_pending'; end if;
+  if p_approve then
+    update public.seller_payouts set payout_admin_approved_at=now(),
+      payout_admin_approved_by=p_actor,payout_admin_rejected_at=null,payout_admin_rejected_by=null,
+      payout_admin_note=nullif(trim(coalesce(p_note,'')),'')
+      where id=p_payout and status='pending' and transfer_status='not_started'
+        and payout_admin_approved_at is null;
+    if not found then return 'already_reviewed'; end if;
+    return 'approved';
+  end if;
+  update public.seller_payouts set status='failed',payout_admin_rejected_at=now(),
+    payout_admin_rejected_by=p_actor,payout_admin_note=nullif(trim(coalesce(p_note,'')),'')
+    where id=p_payout and status='pending' and transfer_status='not_started'
+      and payout_admin_approved_at is null;
+  if not found then return 'already_reviewed'; end if;
+  delete from public.seller_payout_adjustment_applications where payout_id=p_payout;
+  update public.order_items set payout_id=null where payout_id=p_payout;
+  return 'rejected';
+end $$;
+revoke execute on function public.review_seller_payout(uuid,uuid,boolean,text) from public,anon,authenticated;
+grant execute on function public.review_seller_payout(uuid,uuid,boolean,text) to service_role;
+
+-- Existing unverified bank details are deliberately not eligible for automatic transfer.
+-- Sellers must re-confirm their bank using Paystack account resolution before the first automated payout.
+create or replace function public.claim_seller_payout_transfers(p_limit integer default 20)
+returns table(payout_id uuid, amount_ngn integer, reference text, recipient_code text)
+language plpgsql security definer set search_path = '' as $$
+declare p record; v_ref text;
+begin
+  for p in
+    select sp.id, sp.store_id, sp.amount_ngn, s.paystack_recipient_code, s.bank_name, s.account_number, s.account_name
+    from public.seller_payouts sp
+    join public.stores s on s.id = sp.store_id
+    where sp.status = 'pending'
+      and sp.transfer_status = 'not_started'
+      and sp.payout_admin_approved_at is not null
+      and s.status <> 'suspended'
+      and s.payout_account_verified_at is not null
+      and s.paystack_recipient_code is not null
+    order by sp.created_at, sp.id
+    limit greatest(1, least(coalesce(p_limit,20),50))
+    for update of sp skip locked
+  loop
+    v_ref := 'fcsp-' || replace(p.id::text,'-','');
+    update public.seller_payouts sp
+      set status='processing', transfer_status='processing',
+          transfer_reference=v_ref, transfer_recipient_code=p.paystack_recipient_code,
+          bank_snapshot=jsonb_build_object('bank',p.bank_name,'account',p.account_number,'name',p.account_name),
+          transfer_updated_at=now()
+      where sp.id=p.id;
+    payout_id := p.id; amount_ngn := p.amount_ngn; reference := v_ref;
+    recipient_code := p.paystack_recipient_code;
+    return next;
+  end loop;
+end $$;
+
+create or replace function public.set_seller_payout_transfer_state(
+  p_reference text, p_status text, p_transfer_code text default null, p_payload jsonb default '{}'::jsonb
+) returns boolean
+language plpgsql security definer set search_path = '' as $$
+declare p public.seller_payouts;
+begin
+  select * into p from public.seller_payouts
+   where transfer_reference=p_reference for update;
+  if p.id is null then return false; end if;
+  if p.transfer_status in ('success','failed','reversed') then return true; end if;
+  if p_status not in ('processing','awaiting_approval','success','failed','needs_review') then
+    raise exception 'Unsupported payout transfer state';
+  end if;
+  update public.seller_payouts
+    set transfer_status=p_status,
+        transfer_code=coalesce(p_transfer_code,transfer_code),
+        transfer_payload=coalesce(p_payload,'{}'::jsonb),
+        transfer_updated_at=now(),
+        status=case p_status
+          when 'success' then 'paid'
+          when 'awaiting_approval' then 'awaiting_approval'
+          when 'processing' then 'processing'
+          when 'failed' then 'failed'
+          when 'needs_review' then 'needs_review'
+          else status end,
+        reference=case when p_status='success' then p_reference else reference end,
+        paid_at=case when p_status='success' then coalesce(paid_at,now()) else paid_at end
+    where id=p.id;
+  if p_status='failed' then
+    delete from public.seller_payout_adjustment_applications where payout_id=p.id;
+    delete from public.seller_payout_adjustments where original_payout_id=p.id;
+    update public.order_items set payout_id=null where payout_id=p.id;
+  end if;
+  return true;
+end $$;
+
+create or replace function public.record_paystack_seller_payout_event(
+  p_reference text, p_status text, p_amount_kobo bigint, p_currency text, p_payload jsonb
+) returns boolean
+language plpgsql security definer set search_path = '' as $$
+declare p public.seller_payouts;
+begin
+  select * into p from public.seller_payouts where transfer_reference=p_reference for update;
+  if p.id is null then return false; end if;
+  if p_amount_kobo <> p.amount_ngn::bigint * 100 or p_currency <> 'NGN' then
+    raise exception 'Paystack payout amount or currency mismatch';
+  end if;
+  if p.transfer_status='success' and p_status <> 'reversed' then return true; end if;
+  if p_status='success' then
+    update public.seller_payouts set status='paid',transfer_status='success',
+      reference=p_reference,paid_at=coalesce(paid_at,now()),transfer_payload=coalesce(p_payload,'{}'::jsonb),transfer_updated_at=now()
+      where id=p.id;
+  elsif p_status='failed' then
+    update public.seller_payouts set status='failed',transfer_status='failed',
+      transfer_payload=coalesce(p_payload,'{}'::jsonb),transfer_updated_at=now() where id=p.id;
+    delete from public.seller_payout_adjustment_applications where payout_id=p.id;
+    delete from public.seller_payout_adjustments where original_payout_id=p.id;
+    update public.order_items set payout_id=null where payout_id=p.id;
+  elsif p_status='reversed' then
+    -- A reversal after a successful credit needs staff reconciliation; never auto-resubmit it.
+    update public.seller_payouts set status='needs_review',transfer_status='reversed',
+      transfer_payload=coalesce(p_payload,'{}'::jsonb),transfer_updated_at=now() where id=p.id;
+  else
+    return false;
+  end if;
+  return true;
+end $$;
+
+revoke execute on function public.claim_seller_payout_transfers(integer) from public, anon, authenticated;
+revoke execute on function public.set_seller_payout_transfer_state(text,text,text,jsonb) from public, anon, authenticated;
+revoke execute on function public.record_paystack_seller_payout_event(text,text,bigint,text,jsonb) from public, anon, authenticated;
+grant execute on function public.claim_seller_payout_transfers(integer) to service_role;
+grant execute on function public.set_seller_payout_transfer_state(text,text,text,jsonb) to service_role;
+grant execute on function public.record_paystack_seller_payout_event(text,text,bigint,text,jsonb) to service_role;
+
+
+-- A refund can race with a transfer already submitted to Paystack. Keep the batch
+-- attached and create the adjustment while its final status is unknown. If Paystack
+-- later confirms failure, the event handler removes the provisional adjustment.
+create or replace function public.reconcile_seller_refund(p_order uuid)
+returns void
+language plpgsql security definer set search_path = '' as $function$
+declare p record;
+begin
+  for p in
+    select sp.id, sp.store_id, sp.status
+    from public.seller_payouts sp
+    where exists (
+      select 1 from public.order_items i
+      where i.order_id=p_order and i.payout_id=sp.id
+    )
+    order by sp.id
+    for update
+  loop
+    if p.status in ('paid','processing','awaiting_approval','needs_review') then
+      insert into public.seller_payout_adjustments
+        (store_id,order_item_id,original_payout_id,amount_ngn,reason)
+      select e.store_id,e.item_id,p.id,e.net_ngn,'order_refund'
+      from public.store_earnings_all e
+      where e.order_id=p_order
+        and e.item_id in (select i.id from public.order_items i where i.order_id=p_order and i.payout_id=p.id)
+        and e.net_ngn>0
+      on conflict (order_item_id) do nothing;
+
+      if p.status in ('processing','awaiting_approval') then
+        update public.seller_payouts set status='needs_review' where id=p.id;
+      end if;
+    elsif p.status='pending' then
+      delete from public.seller_payout_adjustment_applications where payout_id=p.id;
+      update public.order_items set payout_id=null where payout_id=p.id;
+      update public.seller_payouts set status='failed' where id=p.id and status='pending';
+    else
+      update public.order_items set payout_id=null where payout_id=p.id;
+    end if;
+  end loop;
+end $function$;
+
+revoke execute on function public.reconcile_seller_refund(uuid) from public, anon, authenticated;
+grant execute on function public.reconcile_seller_refund(uuid) to service_role;
+
+-- Cron is intentionally not enabled by this migration. Configure PAYOUT_CRON_SECRET
+-- as an Edge Function secret and payout_cron_secret in Vault first, then create
+-- the scheduled job using the SQL documented in docs/phase-5-paystack-payouts.md.

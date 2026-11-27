@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { getSeller, getSellerSubscriptionPayments } from "@/lib/data/seller";
+import { getSeller, getSellerSubscriptionPayments, getSellerSubscriptionRenewalSettings } from "@/lib/data/seller";
 import { FREE_SALES_LIMIT, PLANS } from "@/lib/dropship/plans";
 import { DemoNote, Gate } from "../_ui/gate";
 import { Card, Meter, ngn, Page } from "../_ui/ui";
 import { UpgradeButton } from "./upgrade-button";
+import { RenewalSettings } from "./renewal-settings";
 
 export const metadata: Metadata = { title: "Manage subscription" };
 
@@ -18,6 +19,7 @@ export default async function PlanPage() {
   if (state.kind !== "live" && state.kind !== "demo") return <Gate state={state} />;
   const s = state.data.store;
   const payments = state.kind === "live" ? await getSellerSubscriptionPayments() : null;
+  const renewal = state.kind === "live" ? await getSellerSubscriptionRenewalSettings() : null;
   const current = PLANS[s.plan];
 
   return (
@@ -41,10 +43,27 @@ export default async function PlanPage() {
         </div>
         {s.plan !== "free" && (
           <p className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-xs leading-5 text-amber-100/80">
-            Automatic recurring renewal is not enabled yet. Your plan is activated after verified payment and expires according to the date above. Renew manually before expiry to avoid interruption.
+Your plan is activated only after verified payment and expires according to the date above. Enable automatic renewal below to use your wallet first, with external checkout available if the wallet is insufficient.
           </p>
         )}
       </Card>
+
+      {s.plan !== "free" && renewal && (
+        <Card>
+          <div className="mb-3">
+            <h2 className="text-lg font-black">Automatic renewal</h2>
+            <p className="mt-1 text-sm text-[#A1A1AA]">We check your FastChina wallet first. If it cannot cover the full renewal, you will be asked to complete payment through Paystack or Flutterwave.</p>
+          </div>
+          <RenewalSettings enabled={renewal.auto_renew} status={renewal.renewal_status} walletBalance={renewal.wallet_ngn} />
+          {["external_required","external_checkout_pending"].includes(renewal.renewal_status) && renewal.auto_renew && (
+            <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3">
+              <p className="text-sm font-bold text-amber-200">{renewal.renewal_status === "external_checkout_pending" ? "External checkout in progress" : "External payment required"}</p>
+              <p className="mt-1 text-xs leading-5 text-amber-100/80">{renewal.renewal_status === "external_checkout_pending" ? "An external checkout is already open for this renewal. Continue that checkout; wallet retries are paused to prevent a duplicate charge." : "Your wallet did not have enough funds for the last renewal attempt. Complete a secure external payment below."}</p>
+              <div className="mt-3"><UpgradeButton plan={s.plan} label={`Renew ${current.name}`} renewal /></div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {s.plan === "free" && (
         <Card>

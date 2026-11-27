@@ -18,7 +18,7 @@ export default async function EarningsPage() {
     : await getPayouts();
   const fee = PLANS[d.store.plan].feePct;
   return (
-    <Page title="Earnings" subtitle={`You keep your markup minus a ${fee}% plan fee. Eligible earnings are batched on Fridays; bank transfers are processed after review.`}>
+    <Page title="Earnings" subtitle={`You keep your markup minus a ${fee}% plan fee. Eligible earnings are batched on Fridays and submitted through Paystack after your bank account is verified. Transfers requiring provider approval are held for review.`}>
       <DemoNote demo={state.kind === "demo"} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="On the way" value={ngn(d.earnings.pending)} sub="Paid once delivered" />
@@ -51,7 +51,7 @@ export default async function EarningsPage() {
               <li key={x.id} className="flex items-center justify-between gap-3 border-t border-white/5 py-3 first:border-0">
                 <span>
                   <strong className="block text-[14px]">{new Date(x.created_at).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Africa/Lagos" })}</strong>
-                  <span className="text-[12px] text-[#8A8A93]">{x.items} items · {x.status === "paid" ? "Sent to your bank" : x.status === "failed" ? "Failed: check your account details" : "Processing"}</span>
+                  <span className="text-[12px] text-[#8A8A93]">{x.items} items · {x.status === "paid" ? "Sent to your bank" : x.status === "failed" ? "Transfer failed: payout will be retried in a future batch" : x.status === "awaiting_approval" ? "Awaiting transfer approval" : x.status === "needs_review" ? "Under staff review" : x.status === "processing" ? "Paystack is processing your transfer" : "Queued for Friday payout"}</span>
                 </span>
                 <strong className="text-[16px] tabular-nums">{ngn(x.amount_ngn)}</strong>
               </li>

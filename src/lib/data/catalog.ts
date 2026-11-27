@@ -275,21 +275,28 @@ export async function getWholesaleProducts(): Promise<Product[]> {
   if (!hasSupabase) {
     return SAMPLE_PRODUCTS.map(sampleToProduct).filter((p) => p.wholesale && p.wholesaleFrom > 0 && Number.isFinite(p.wholesaleFrom));
   }
-  const wholesaleColumns = PRODUCT_COLUMNS.replace("product_skus(", "product_skus!inner(");
-  const { data, error } = await publicDb()
+  // First select a small, cheap list of eligible product slugs. Joining every
+  // SKU for 120 products in one query can exceed Supabase's statement timeout
+  // during Netlify prerendering. Hydrate in small batches instead.
+  const { data: candidates, error: candidateError } = await publicDb()
     .from("products")
-    .select(wholesaleColumns)
+    .select("slug")
     .eq("wholesale", true)
-    .eq("product_skus.active", true)
-    .gt("product_skus.price_wholesale", 0)
     .in("status", ["active", "sold_out"])
     .order("sale_count", { ascending: false })
     .order("slug", { ascending: true })
     .limit(120);
-  if (error) throw new Error(`Wholesale catalogue: ${error.message}`);
-  return ((data ?? []) as unknown as Row[])
-    .map(rowToProduct)
-    .filter((p): p is Product => p !== null && p.wholesale && p.wholesaleFrom > 0 && Number.isFinite(p.wholesaleFrom));
+  if (candidateError) throw new Error(`Wholesale product candidates: ${candidateError.message}`);
+
+  const slugs = (candidates ?? []).map((row) => row.slug);
+  const products: Product[] = [];
+  for (let i = 0; i < slugs.length; i += 8) {
+    const batch = await getProductsBySlugs(slugs.slice(i, i + 8));
+    products.push(...batch.filter(
+      (p) => p.wholesale && p.wholesaleFrom > 0 && Number.isFinite(p.wholesaleFrom),
+    ));
+  }
+  return products;
 }
 
 /** Bounded related-product candidates; the page prioritises the current product's category. */

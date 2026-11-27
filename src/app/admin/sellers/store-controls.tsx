@@ -6,14 +6,13 @@ import type { AdminStore } from "@/lib/data/admin";
 import { naira } from "@/lib/format";
 import { call } from "@/lib/net";
 import { storeAddress } from "@/lib/dropship/plans";
-import { markPayoutPaid, setDomainVerified, setStoreAlias, setStorePlan, setStoreStatus } from "../actions";
+import { reviewSellerPayout, setDomainVerified, setStoreAlias, setStorePlan, setStoreStatus } from "../actions";
 
 export function StoreControls({ store }: { store: AdminStore }) {
   const router = useRouter();
   const [plan, setPlan] = useState(store.plan);
   const [months, setMonths] = useState(1);
   const [alias, setAlias] = useState(store.alias ?? "");
-  const [refs, setRefs] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, start] = useTransition();
   const run = (fn: () => Promise<{ ok: boolean; message: string }>) =>
@@ -65,8 +64,14 @@ export function StoreControls({ store }: { store: AdminStore }) {
       {store.payouts.map((p) => (
         <div key={p.id} className="flex flex-wrap items-center gap-2 rounded-md bg-[#FFF7E6] p-2.5">
           <span className="flex-1"><strong>{naira(p.amount_ngn)}</strong> to {p.bank_snapshot.name} · {p.bank_snapshot.bank} {p.bank_snapshot.account} · {p.items} items</span>
-          <input value={refs[p.id] ?? ""} onChange={(e) => setRefs({ ...refs, [p.id]: e.target.value })} placeholder="Transfer reference" aria-label="Transfer reference" className="min-h-9 rounded-md border border-[#D0D4DB] bg-white px-2" />
-          <button type="button" disabled={busy || !refs[p.id]} className={btn} onClick={() => run(() => markPayoutPaid(p.id, refs[p.id]))}>Mark paid</button>
+          {p.payout_admin_approved_at ? (
+            <span className="text-xs font-bold text-[#166534]">Approved · waiting for Paystack worker</span>
+          ) : (
+            <>
+              <button type="button" disabled={busy} className={btn} onClick={() => run(() => reviewSellerPayout(p.id, true))}>Approve Paystack payout</button>
+              <button type="button" disabled={busy} className={`${btn} border-[#F0B4B4] text-[#B42318]`} onClick={() => run(() => reviewSellerPayout(p.id, false, "Rejected by admin"))}>Reject</button>
+            </>
+          )}
         </div>
       ))}
       {store.adjustments.length > 0 && (
