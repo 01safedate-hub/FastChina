@@ -80,3 +80,15 @@ The migrations and Edge Function code do not initiate any transfer during deploy
 ## Current environment status
 
 The Friday payout-batch cron exists, but the five-minute Paystack transfer worker is not scheduled. The Supabase Vault currently has no `payout_cron_secret`. Therefore, the application can collect verified payout accounts and prepare/admin-approve batches, but it will not send transfers automatically until the dedicated cron secret is configured and the worker schedule is created. Do not describe automated payouts as active before verifying that schedule and a test-mode transfer.
+
+
+## Phase 5 follow-up hardening
+
+Migration `20261127170000_044_seller_payout_security_hardening.sql` closes two server-side gaps found during the post-merge audit:
+
+- Public client roles can no longer update seller payout bank identity, account number, bank code, verification timestamp, or Paystack recipient code. The `seller-payouts` Edge Function retains its service-role write path after Paystack account resolution.
+- The payout event RPC rejects unsupported statuses and mismatched/null amount or currency values, keeps failed and reversed transfers terminal against delayed events, and permits a successful payout to move only to staff review if Paystack later reports a reversal.
+
+Run the read-only assertions in `supabase/tests/phase-5-payout-security.sql` after applying the migration. This verifies role-level column write permissions and that the installed payout event function contains the expected terminal-state and amount/currency guards.
+
+The five-minute worker is still an operational activation step: configure the two payout secrets, create the Vault entry and schedule only after the code/migration review, then run the Paystack test-mode transfer/refund matrix. This migration does not activate or initiate transfers.
