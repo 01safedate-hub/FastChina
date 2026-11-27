@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Suspense } from "react";
+import { connection } from "next/server";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/json-ld";
 import { CATEGORY_KEYS } from "@/lib/content/category-pages";
@@ -18,7 +19,6 @@ export const metadata: Metadata = {
   alternates: { canonical: "/wholesale" },
   openGraph: { type: "website", url: "/wholesale", title: "FastChina wholesale market", description: `Factory stock by sea, from ${MIN} units per product.` },
 };
-
 
 export default function WholesalePage() {
   return (
@@ -42,6 +42,12 @@ export default function WholesalePage() {
 }
 
 async function Market() {
+  // The live wholesale catalogue is request-time data. Do not query Supabase while
+  // Next.js is prerendering this route on Netlify: build workers share a short DB
+  // statement-timeout budget with the rest of the 181-page export. The surrounding
+  // Suspense boundary keeps the banner and page shell prerenderable.
+  await connection();
+
   const [products, kitRows] = await Promise.all([getWholesaleProducts(), getKitRows()]);
   const present = new Set(products.map((p) => p.category));
   const categories = CATEGORY_KEYS.filter((k) => present.has(k));
